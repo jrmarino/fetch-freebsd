@@ -1264,6 +1264,6 @@ fetchStatFTP(struct url *url, struct url_stat *us, const char *flags)
 struct url_ent *
 fetchListFTP(struct url *url __unused, const char *flags __unused)
 {
-	fprintf(stderr, "fetchListFTP(): not implemented");
+	fprintf(stderr, "fetchListFTP(): not implemented\n");
 	return (NULL);
 }

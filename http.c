@@ -2154,7 +2154,7 @@ fetchGetHTTP(struct url *URL, const char *flags)
 FXRETTYPE
 fetchPutHTTP(struct url *URL __unused, const char *flags __unused)
 {
-	fprintf(stderr, "fetchPutHTTP(): not implemented");
+	fprintf(stderr, "fetchPutHTTP(): not implemented\n");
 	return (NULL);
 }
 
@@ -2179,7 +2179,7 @@ fetchStatHTTP(struct url *URL, struct url_stat *us, const char *flags)
 struct url_ent *
 fetchListHTTP(struct url *url __unused, const char *flags __unused)
 {
-	fprintf(stderr, "fetchListHTTP(): not implemented");
+	fprintf(stderr, "fetchListHTTP(): not implemented\n");
 	return (NULL);
 }
 
