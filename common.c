@@ -55,6 +55,28 @@
 #include "fetch.h"
 #include "common.h"
 
+/*** compatibility code ******************************************************/
+
+#ifndef INFTIM
+#define INFTIM (-1)
+#endif
+
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#endif
+
+#define JRM_MUL_NO_OVERFLOW ((size_t)1 << (sizeof(size_t) * 4))
+
+static void *
+jrm_reallocarray(void *optr, size_t nmemb, size_t size)
+{
+	if ((nmemb >= JRM_MUL_NO_OVERFLOW || size >= JRM_MUL_NO_OVERFLOW) &&
+	    nmemb > 0 && SIZE_MAX / nmemb < size) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	return realloc(optr, size * nmemb);
+}
 
 /*** Local data **************************************************************/
 
@@ -112,8 +134,12 @@ fetch_syserr(void)
 	case EPERM:
 	case EACCES:
 	case EROFS:
+#ifdef EAUTH
 	case EAUTH:
+#endif
+#ifdef ENEEDAUTH
 	case ENEEDAUTH:
+#endif
 		fetchLastErrCode = FETCH_AUTH;
 		break;
 	case ENOENT:
@@ -214,13 +240,17 @@ conn_t *
 fetch_reopen(int sd)
 {
 	conn_t *conn;
+#ifdef SO_NOSIGPIPE
 	int opt = 1;
+#endif
 
 	/* allocate and fill connection structure */
 	if ((conn = calloc(1, sizeof(*conn))) == NULL)
 		return (NULL);
 	fcntl(sd, F_SETFD, FD_CLOEXEC);
+#ifdef SO_NOSIGPIPE
 	setsockopt(sd, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof opt);
+#endif
 	conn->sd = sd;
 	++conn->ref;
 	return (conn);
@@ -1327,9 +1357,8 @@ fetch_add_entry(struct url_ent **p, int *size, int *len,
 	}
 
 	if (*len >= *size - 1) {
-		tmp = reallocarray(*p, *size * 2 + 1, sizeof(**p));
+		tmp = jrm_reallocarray(*p, *size * 2 + 1, sizeof(**p));
 		if (tmp == NULL) {
-			errno = ENOMEM;
 			fetch_syserr();
 			return (-1);
 		}

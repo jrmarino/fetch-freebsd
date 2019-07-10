@@ -35,6 +35,7 @@
 
 #define FTP_DEFAULT_PORT	21
 #define HTTP_DEFAULT_PORT	80
+#define HTTPS_DEFAULT_PORT	443
 #define FTP_DEFAULT_PROXY_PORT	21
 #define HTTP_DEFAULT_PROXY_PORT	3128
 
@@ -44,6 +45,10 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#endif
+
+#ifndef __unused
+#define	__unused	__attribute__((__unused__))
 #endif
 
 /* Connection */
@@ -75,7 +80,7 @@ struct iovec;
 
 void		 fetch_seterr(struct fetcherr *, int);
 void		 fetch_syserr(void);
-void		 fetch_info(const char *, ...) __printflike(1, 2);
+void		 fetch_info(const char *, ...);
 int		 fetch_default_port(const char *);
 int		 fetch_default_proxy_port(const char *);
 struct addrinfo *fetch_resolve(const char *, int, int);
@@ -125,12 +130,12 @@ int		 fetch_no_proxy_match(const char *);
  * Note that _*_request() free purl, which is way ugly but saves us a
  * whole lot of trouble.
  */
-FILE		*http_request(struct url *, const char *,
+FXRETTYPE	http_request(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *);
-FILE		*http_request_body(struct url *, const char *,
+FXRETTYPE	http_request_body(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *,
 		     const char *, const char *);
-FILE		*ftp_request(struct url *, const char *,
+FXRETTYPE	ftp_request(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *);
 
 /*

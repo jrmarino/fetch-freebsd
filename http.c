@@ -1436,7 +1436,11 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 	if (strcmp(URL->scheme, SCHEME_HTTPS) == 0 &&
 	    fetch_ssl(conn, URL, verbose) == -1) {
 		/* grrr */
+#ifdef EAUTH
 		errno = EAUTH;
+#else
+		errno = EACCES;
+#endif
 		fetch_syserr();
 		goto ouch;
 	}

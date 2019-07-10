@@ -98,6 +98,10 @@
 #define FTP_SYNTAX_ERROR		500
 #define FTP_PROTOCOL_ERROR		999
 
+#ifndef MAXLOGNAME
+#define MAXLOGNAME			65	/* assume 2x Free/Open limit */
+#endif
+
 static struct url cached_host;
 static conn_t	*cached_connection;
 
