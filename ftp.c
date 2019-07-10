@@ -76,6 +76,10 @@
 #include "common.h"
 #include "ftperr.h"
 
+#ifdef __sun__
+#define u_int32_t	uint32_t
+#endif
+
 #define FTP_ANONYMOUS_USER	"anonymous"
 
 #define FTP_CONNECTION_ALREADY_OPEN	125
@@ -136,7 +140,9 @@ unmappedaddr(struct sockaddr_in6 *sin6)
 	sin4->sin_addr.s_addr = addr;
 	sin4->sin_port = port;
 	sin4->sin_family = AF_INET;
+#ifdef HAVE_STRUCT_SOCKADDR_IN_SIN_LEN
 	sin4->sin_len = sizeof(struct sockaddr_in);
+#endif
 }
 
 /*
@@ -181,17 +187,28 @@ ftp_chkerr(conn_t *conn)
 static int
 ftp_cmd(conn_t *conn, const char *fmt, ...)
 {
-	va_list ap;
+	va_list ap, ap_copy;
 	size_t len;
 	char *msg;
 	int r;
 
 	va_start(ap, fmt);
-	len = vasprintf(&msg, fmt, ap);
+	va_copy(ap_copy, ap);
+	len = vsnprintf(NULL, 0, fmt, ap_copy);
+	va_end(ap_copy);
+	msg = (char *) malloc(len + 1);
+	if (msg == NULL) {
+		errno = ENOMEM;
+	} else {
+		len = vsnprintf(msg, len + 1, fmt, ap);
+		if (len < 0) {
+			free (msg);
+			msg = NULL;
+		}
+	}
 	va_end(ap);
 
 	if (msg == NULL) {
-		errno = ENOMEM;
 		fetch_syserr();
 		return (-1);
 	}
@@ -327,7 +344,7 @@ ftp_cwd(conn_t *conn, const char *file)
 			++beg, ++i;
 		for (++i; file + i < end && file[i] != '/'; ++i)
 			/* nothing */ ;
-		e = ftp_cmd(conn, "CWD %.*s", file + i - beg, beg);
+		e = ftp_cmd(conn, "CWD %.*s", (int)(file + i - beg), beg);
 		if (e != FTP_FILE_ACTION_OK) {
 			ftp_seterr(e);
 			return (-1);
@@ -384,6 +401,7 @@ ftp_mode_type(conn_t *conn, int mode, int type)
 		break;
 	case 'd':
 		type = 'D';
+		/* FALLTHROUGH */
 	case 'D':
 		/* can't handle yet */
 	default:
@@ -486,9 +504,15 @@ struct ftpio {
 	int	 err;		/* Error code */
 };
 
+#ifdef __sun__
+static ssize_t	ftp_readfn(void *, void *, size_t);
+static ssize_t	ftp_writefn(void *, const void *, size_t);
+static int	ftp_seekfn(void *, off_t*, int);
+#else
 static int	 ftp_readfn(void *, char *, int);
 static int	 ftp_writefn(void *, const char *, int);
-static fpos_t	 ftp_seekfn(void *, fpos_t, int);
+static off_t	 ftp_seekfn(void *, off_t, int);
+#endif
 static int	 ftp_closefn(void *);
 
 static int
@@ -512,7 +536,7 @@ ftp_readfn(void *v, char *buf, int len)
 	}
 	if (io->eof)
 		return (0);
-	r = fetch_read(io->dconn, buf, len);
+	r = fetch_read(io->dconn, (char *)buf, (size_t)len);
 	if (r > 0)
 		return (r);
 	if (r == 0) {
@@ -524,8 +548,13 @@ ftp_readfn(void *v, char *buf, int len)
 	return (-1);
 }
 
+#ifdef __sun__
+static ssize_t
+ftp_writefn(void *v, const void *buf, size_t len)
+#else
 static int
 ftp_writefn(void *v, const char *buf, int len)
+#endif
 {
 	struct ftpio *io;
 	int w;
@@ -543,7 +572,7 @@ ftp_writefn(void *v, const char *buf, int len)
 		errno = io->err;
 		return (-1);
 	}
-	w = fetch_write(io->dconn, buf, len);
+	w = fetch_write(io->dconn, (const void*)buf, (size_t)len);
 	if (w >= 0)
 		return (w);
 	if (errno != EINTR)
@@ -551,8 +580,13 @@ ftp_writefn(void *v, const char *buf, int len)
 	return (-1);
 }
 
-static fpos_t
-ftp_seekfn(void *v, fpos_t pos __unused, int whence __unused)
+#ifdef __sun__
+static int
+ftp_seekfn(void *v, off_t *pos __unused, int whence __unused)
+#else
+static off_t
+ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
+#endif
 {
 	struct ftpio *io;
 
@@ -594,11 +628,20 @@ ftp_closefn(void *v)
 	return (r == FTP_TRANSFER_COMPLETE) ? 0 : -1;
 }
 
-static FILE *
+static FXRETTYPE
 ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 {
 	struct ftpio *io;
-	FILE *f;
+	FXRETTYPE f;
+#ifdef USE_ESTREAM
+	es_cookie_io_functions_t ftp_cookie_functions =
+	{
+	  ftp_readfn,
+	  ftp_writefn,
+	  ftp_seekfn,
+	  ftp_closefn
+	};
+#endif
 
 	if (cconn == NULL || dconn == NULL)
 		return (NULL);
@@ -608,7 +651,11 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 	io->dconn = dconn;
 	io->dir = mode;
 	io->eof = io->err = 0;
+#ifdef USE_ESTREAM
+	f = es_fopencookie ((void *)io, "rb", ftp_cookie_functions);
+#else
 	f = funopen(io, ftp_readfn, ftp_writefn, ftp_seekfn, ftp_closefn);
+#endif
 	if (f == NULL)
 		free(io);
 	return (f);
@@ -617,7 +664,7 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 /*
  * Transfer file
  */
-static FILE *
+static FXRETTYPE
 ftp_transfer(conn_t *conn, const char *oper, const char *file,
     int mode, off_t offset, const char *flags)
 {
@@ -627,14 +674,18 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	const char *bindaddr;
 	const char *filename;
 	int filenamelen, type;
-	int low, pasv, verbose;
+	int pasv, verbose;
 	int e, sd = -1;
 	socklen_t l;
 	char *s;
-	FILE *df;
+	FXRETTYPE df;
+
+#ifdef IPV6_PORTRANGE
+	int low;
 
 	/* check flags */
 	low = CHECK_FLAG('l');
+#endif
 	pasv = CHECK_FLAG('p') || !CHECK_FLAG('P');
 	verbose = CHECK_FLAG('v');
 
@@ -772,7 +823,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    (e = fetch_bind(sd, sa.ss_family, bindaddr)) != 0)
 			goto ouch;
-		if (connect(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
+		if (connect(sd, (struct sockaddr *)&sa, sizeof(sa)) == -1)
 			goto sysouch;
 
 		/* make the server initiate the transfer */
@@ -785,31 +836,45 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	} else {
 		u_int32_t a;
 		u_short p;
-		int arg, d;
+#ifdef IPV6_PORTRANGE
+		int arg;
+#endif
+		int d;
+		socklen_t sslen;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 
 		switch (sa.ss_family) {
 		case AF_INET6:
 			((struct sockaddr_in6 *)&sa)->sin6_port = 0;
+			sslen = sizeof(struct sockaddr_in6);
 #ifdef IPV6_PORTRANGE
 			arg = low ? IPV6_PORTRANGE_DEFAULT : IPV6_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IPV6, IPV6_PORTRANGE,
 				(char *)&arg, sizeof(arg)) == -1)
 				goto sysouch;
 #endif
+			if (verbose)
+				fetch_info("binding IPv6 data socket");
 			break;
 		case AF_INET:
 			((struct sockaddr_in *)&sa)->sin_port = 0;
+			sslen = sizeof(struct sockaddr_in);
+#ifdef IP_PORTRANGE
 			arg = low ? IP_PORTRANGE_DEFAULT : IP_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IP, IP_PORTRANGE,
 				(char *)&arg, sizeof(arg)) == -1)
 				goto sysouch;
+#endif
+			if (verbose)
+				fetch_info("binding IPv4 data socket");
 			break;
+		default:
+			sslen = 0;
+			if (verbose)
+				fetch_info("binding unknown family socket");
 		}
-		if (verbose)
-			fetch_info("binding data socket");
-		if (bind(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
+		if (bind(sd, (struct sockaddr *)&sa, sslen) == -1)
 			goto sysouch;
 		if (listen(sd, 1) == -1)
 			goto sysouch;
@@ -832,7 +897,8 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			e = -1;
 			sin6 = (struct sockaddr_in6 *)&sa;
 			sin6->sin6_scope_id = 0;
-			if (getnameinfo((struct sockaddr *)&sa, sa.ss_len,
+			if (getnameinfo((struct sockaddr *)&sa,
+				sizeof(struct sockaddr_in6),
 				hname, sizeof(hname),
 				NULL, 0, NI_NUMERICHOST) == 0) {
 				e = ftp_cmd(conn, "EPRT |%d|%s|%d|", 2, hname,
@@ -1097,7 +1163,7 @@ ftp_get_proxy(struct url * url, const char *flags)
 /*
  * Process an FTP request
  */
-FILE *
+FXRETTYPE
 ftp_request(struct url *url, const char *op, struct url_stat *us,
     struct url *purl, const char *flags)
 {
@@ -1138,7 +1204,7 @@ ftp_request(struct url *url, const char *op, struct url_stat *us,
 	if (strcmp(op, "STAT") == 0) {
 		--conn->ref;
 		ftp_disconnect(conn);
-		return (FILE *)1; /* bogus return value */
+		return (FXRETTYPE)1; /* bogus return value */
 	}
 	if (strcmp(op, "STOR") == 0 || strcmp(op, "APPE") == 0)
 		oflag = O_WRONLY;
@@ -1156,7 +1222,7 @@ errsock:
 /*
  * Get and stat file
  */
-FILE *
+FXRETTYPE
 fetchXGetFTP(struct url *url, struct url_stat *us, const char *flags)
 {
 	return (ftp_request(url, "RETR", us, ftp_get_proxy(url, flags), flags));
@@ -1165,7 +1231,7 @@ fetchXGetFTP(struct url *url, struct url_stat *us, const char *flags)
 /*
  * Get file
  */
-FILE *
+FXRETTYPE
 fetchGetFTP(struct url *url, const char *flags)
 {
 	return (fetchXGetFTP(url, NULL, flags));
@@ -1174,7 +1240,7 @@ fetchGetFTP(struct url *url, const char *flags)
 /*
  * Put file
  */
-FILE *
+FXRETTYPE
 fetchPutFTP(struct url *url, const char *flags)
 {
 	return (ftp_request(url, CHECK_FLAG('a') ? "APPE" : "STOR", NULL,
@@ -1187,7 +1253,7 @@ fetchPutFTP(struct url *url, const char *flags)
 int
 fetchStatFTP(struct url *url, struct url_stat *us, const char *flags)
 {
-	FILE *f;
+	FXRETTYPE f;
 
 	f = ftp_request(url, "STAT", us, ftp_get_proxy(url, flags), flags);
 	if (f == NULL)
