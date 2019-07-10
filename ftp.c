@@ -1260,8 +1260,8 @@ fetchStatFTP(struct url *url, struct url_stat *us, const char *flags)
 		return (-1);
 	/*
 	 * When op is "STAT", ftp_request() will return either NULL or
-	 * (FILE *)1, never a valid FILE *, so we mustn't fclose(f) before
-	 * returning, as it would cause a segfault.
+	 * (FXRETTYPE)1, never a valid FXRETTYPE, so we mustn't FXCLOSE(f)
+	 * before returning, as it would cause a segfault.
 	 */
 	return (0);
 }

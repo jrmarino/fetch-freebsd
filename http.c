@@ -60,6 +60,19 @@
  * SUCH DAMAGE.
  */
 
+#ifdef __sun__
+#define __EXTENSIONS__
+#elif defined __linux__
+#define __USE_XOPEN
+#else
+#define _XOPEN_SOURCE
+#endif
+#ifdef __NetBSD__
+#define _NETBSD_SOURCE
+#endif
+#ifdef __linux__
+#define __USE_XOPEN
+#endif
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -73,17 +86,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>	/* for strncasecmp */
 #include <time.h>
 #include <unistd.h>
 
-#ifdef WITH_SSL
 #include <openssl/md5.h>
 #define MD5Init(c) MD5_Init(c)
 #define MD5Update(c, data, len) MD5_Update(c, data, len)
 #define MD5Final(md, c) MD5_Final(md, c)
-#else
-#include <md5.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -265,8 +275,13 @@ http_fillbuf(struct httpio *io, size_t len)
 /*
  * Read function
  */
+#ifdef USE_ESTREAM
+static ssize_t
+http_readfn(void *v, void *buf, size_t len)
+#else
 static int
 http_readfn(void *v, char *buf, int len)
+#endif
 {
 	struct httpio *io = (struct httpio *)v;
 	int rlen;
@@ -298,8 +313,13 @@ http_readfn(void *v, char *buf, int len)
 /*
  * Write function
  */
+#ifdef USE_ESTREAM
+static ssize_t
+http_writefn(void *v, const void *buf, size_t len)
+#else
 static int
 http_writefn(void *v, const char *buf, int len)
+#endif
 {
 	struct httpio *io = (struct httpio *)v;
 
@@ -325,11 +345,20 @@ http_closefn(void *v)
 /*
  * Wrap a file descriptor up
  */
-static FILE *
+static FXRETTYPE
 http_funopen(conn_t *conn, int chunked)
 {
 	struct httpio *io;
-	FILE *f;
+	FXRETTYPE *f;
+#ifdef USE_ESTREAM
+	es_cookie_io_functions_t http_cookie_functions =
+	{
+	  http_readfn,
+	  http_writefn,
+	  NULL,
+	  http_closefn
+	};
+#endif
 
 	if ((io = calloc(1, sizeof(*io))) == NULL) {
 		fetch_syserr();
@@ -337,7 +366,11 @@ http_funopen(conn_t *conn, int chunked)
 	}
 	io->conn = conn;
 	io->chunked = chunked;
+#ifdef USE_ESTREAM
+	f = es_fopencookie ((void *)io, "rb", http_cookie_functions);
+#else
 	f = funopen(io, http_readfn, http_writefn, NULL, http_closefn);
+#endif
 	if (f == NULL) {
 		fetch_syserr();
 		free(io);
@@ -387,17 +420,28 @@ static struct {
 static int
 http_cmd(conn_t *conn, const char *fmt, ...)
 {
-	va_list ap;
+	va_list ap, ap_copy;
 	size_t len;
 	char *msg;
 	int r;
 
 	va_start(ap, fmt);
-	len = vasprintf(&msg, fmt, ap);
+	va_copy(ap_copy, ap);
+	len = vsnprintf(NULL, 0, fmt, ap_copy);
+	va_end(ap_copy);
+	msg = (char *) malloc(len + 1);
+	if (msg == NULL) {
+		errno = ENOMEM;
+	} else {
+		len = vsnprintf(msg, len + 1, fmt, ap);
+		if (len < 0) {
+			free (msg);
+			msg = NULL;
+		}
+	}
 	va_end(ap);
 
 	if (msg == NULL) {
-		errno = ENOMEM;
 		fetch_syserr();
 		return (-1);
 	}
@@ -1252,18 +1296,34 @@ http_digest_auth(conn_t *conn, const char *hdr, http_auth_challenge_t *c,
 	char noncecount[10];
 	char cnonce[40];
 	char *options = NULL;
+	size_t len;
 
 	if (!c->realm || !c->nonce) {
 		DEBUGF("realm/nonce not set in challenge\n");
 		return(-1);
 	}
+
+	len = 1;
+	len += c->algo ? 11 + strlen(c->algo) : 0;
+	len += c->opaque ? 8 + strlen(c->opaque) : 0;
+
 	if (!c->algo)
 		c->algo = strdup("");
 
-	if (asprintf(&options, "%s%s%s%s",
-	    *c->algo? ",algorithm=" : "", c->algo,
-	    c->opaque? ",opaque=" : "", c->opaque?c->opaque:"") < 0)
+	options = (char *) malloc(len);
+	if (options == NULL) {
+		errno = ENOMEM;
 		return (-1);
+	}
+
+	if (snprintf(options, len, "%s%s%s%s",
+	    *c->algo ? ",algorithm=" : "",
+	    c->algo,
+	    c->opaque ? ",opaque=" : "",
+	    c->opaque ? c->opaque : "") < 0) {
+	        free(options);
+		return (-1);
+	}
 
 	if (!c->qop) {
 		c->qop = strdup("");
@@ -1310,11 +1370,20 @@ http_basic_auth(conn_t *conn, const char *hdr, const char *usr, const char *pwd)
 {
 	char *upw, *auth;
 	int r;
+	size_t len;
 
 	DEBUGF("basic: usr: [%s]\n", usr);
 	DEBUGF("basic: pwd: [%s]\n", pwd);
-	if (asprintf(&upw, "%s:%s", usr, pwd) == -1)
+	len = strlen(usr) + strlen(pwd) + 1 + 1;
+	upw = (char *) malloc(len);
+	if (upw == NULL) {
+		errno = ENOMEM;
 		return (-1);
+	}
+	if (snprintf(upw, "%s:%s", usr, pwd) < 0) {
+		free(upw);
+		return (-1);
+	}
 	auth = http_base64(upw);
 	free(upw);
 	if (auth == NULL)
@@ -1382,7 +1451,10 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 	http_headerbuf_t headerbuf;
 	const char *p;
 	int verbose;
-	int af, val;
+	int af;
+#if defined(TCP_NOPUSH) || defined(TCP_CORK)
+	int val;
+#endif
 	int serrno;
 
 #ifdef INET6
@@ -1445,8 +1517,15 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 		goto ouch;
 	}
 
+#ifdef TCP_NOPUSH
 	val = 1;
 	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
+#else
+#  ifdef TCP_CORK
+	val = 1;
+	setsockopt(conn->sd, IPPROTO_TCP, TCP_CORK, &val, sizeof(val));
+#  endif
+#endif
 
 	clean_http_headerbuf(&headerbuf);
 	return (conn);
@@ -1482,14 +1561,16 @@ http_get_proxy(struct url * url, const char *flags)
 }
 
 static void
-http_print_html(FILE *out, FILE *in)
+http_print_html(FXRETTYPE out, FXRETTYPE in)
 {
-	size_t len;
+	size_t linecap;
 	char *line, *p, *q;
 	int comment, tag;
+	ssize_t len;
 
+	linecap = 0;
 	comment = tag = 0;
-	while ((line = fgetln(in, &len)) != NULL) {
+	while ((len = FXGETLINE(&line, &linecap, in)) != -1) {
 		while (len && isspace((unsigned char)line[len - 1]))
 			--len;
 		for (p = q = line; q < line + len; ++q) {
@@ -1504,7 +1585,7 @@ http_print_html(FILE *out, FILE *in)
 				tag = 0;
 			} else if (!tag && *q == '<') {
 				if (q > p)
-					fwrite(p, q - p, 1, out);
+					FXWRITE(p, q - p, 1, out);
 				tag = 1;
 				if (q + 3 < line + len &&
 				    strcmp(q, "<!--") == 0) {
@@ -1514,9 +1595,10 @@ http_print_html(FILE *out, FILE *in)
 			}
 		}
 		if (!tag && q > p)
-			fwrite(p, q - p, 1, out);
+			FXWRITE(p, q - p, 1, out);
 		fputc('\n', out);
 	}
+	free(line);
 }
 
 
@@ -1524,7 +1606,7 @@ http_print_html(FILE *out, FILE *in)
  * Core
  */
 
-FILE *
+FXRETTYPE
 http_request(struct url *URL, const char *op, struct url_stat *us,
 	struct url *purl, const char *flags)
 {
@@ -1538,7 +1620,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
  * XXX This function is way too long, the do..while loop should be split
  * XXX off into a separate function.
  */
-FILE *
+FXRETTYPE
 http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	struct url *purl, const char *flags, const char *content_type,
 	const char *body)
@@ -1552,7 +1634,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	off_t offset, clength, length, size;
 	time_t mtime;
 	const char *p;
-	FILE *f;
+	FXRETTYPE f;
 	hdr_t h;
 	struct tm *timestruct;
 	http_headerbuf_t headerbuf;
@@ -1746,9 +1828,17 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		 * be compatible with such configurations, fiddle with socket
 		 * options to force the pending data to be written.
 		 */
+#ifdef TCP_NOPUSH
 		val = 0;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 			   sizeof(val));
+#else
+#  ifdef TCP_CORK
+		val = 0;
+		setsockopt(conn->sd, IPPROTO_TCP, TCP_CORK, &val,
+			   sizeof(val));
+#  endif
+#endif
 		val = 1;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
 			   sizeof(val));
@@ -2002,7 +2092,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	URL->offset = offset;
 	URL->length = clength;
 
-	/* wrap it up in a FILE */
+	/* wrap it up in a FXRETTYPE/
 	if ((f = http_funopen(conn, chunked)) == NULL) {
 		fetch_syserr();
 		goto ouch;
@@ -2015,7 +2105,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 
 	if (HTTP_ERROR(conn->err)) {
 		http_print_html(stderr, f);
-		fclose(f);
+		FXCLOSE(f);
 		f = NULL;
 	}
 	clean_http_headerbuf(&headerbuf);
@@ -2044,7 +2134,7 @@ ouch:
 /*
  * Retrieve and stat a file by HTTP
  */
-FILE *
+FXRETTYPE
 fetchXGetHTTP(struct url *URL, struct url_stat *us, const char *flags)
 {
 	return (http_request(URL, "GET", us, http_get_proxy(URL, flags), flags));
@@ -2053,7 +2143,7 @@ fetchXGetHTTP(struct url *URL, struct url_stat *us, const char *flags)
 /*
  * Retrieve a file by HTTP
  */
-FILE *
+FXRETTYPE
 fetchGetHTTP(struct url *URL, const char *flags)
 {
 	return (fetchXGetHTTP(URL, NULL, flags));
@@ -2062,7 +2152,7 @@ fetchGetHTTP(struct url *URL, const char *flags)
 /*
  * Store a file by HTTP
  */
-FILE *
+FXRETTYPE
 fetchPutHTTP(struct url *URL __unused, const char *flags __unused)
 {
 	warnx("fetchPutHTTP(): not implemented");
@@ -2075,12 +2165,12 @@ fetchPutHTTP(struct url *URL __unused, const char *flags __unused)
 int
 fetchStatHTTP(struct url *URL, struct url_stat *us, const char *flags)
 {
-	FILE *f;
+	FXRETTYPE f;
 
 	f = http_request(URL, "HEAD", us, http_get_proxy(URL, flags), flags);
 	if (f == NULL)
 		return (-1);
-	fclose(f);
+	FXCLOSE(f);
 	return (0);
 }
 
@@ -2094,7 +2184,7 @@ fetchListHTTP(struct url *url __unused, const char *flags __unused)
 	return (NULL);
 }
 
-FILE *
+FXRETTYPE
 fetchReqHTTP(struct url *URL, const char *method, const char *flags,
 	const char *content_type, const char *body)
 {

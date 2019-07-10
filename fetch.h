@@ -51,6 +51,13 @@
 #define USE_ESTREAM
 #endif
 
+#if defined(__DragonFly__) \
+ || defined(__FreeBSD__) \
+ || defined(__NetBSD__) \
+ || defined(__OpenBSD__)
+#define USE_SETPROCTITLE
+#endif
+
 #ifdef USE_ESTREAM
 #include <estream.h>
 #define	FXRETTYPE	estream_t

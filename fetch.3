@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: head/lib/libfetch/fetch.3 297355 2016-03-28 16:48:28Z trasz $
 .\"
-.Dd March 18, 2016
+.Dd July 10, 2019
 .Dt FETCH 3
 .Os
 .Sh NAME
@@ -71,51 +71,51 @@
 .Fn fetchParseURL "const char *URL"
 .Ft void
 .Fn fetchFreeURL "struct url *u"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchXGetURL "const char *URL" "struct url_stat *us" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchGetURL "const char *URL" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchPutURL "const char *URL" "const char *flags"
 .Ft int
 .Fn fetchStatURL "const char *URL" "struct url_stat *us" "const char *flags"
 .Ft struct url_ent *
 .Fn fetchListURL "const char *URL" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchXGet "struct url *u" "struct url_stat *us" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchGet "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchPut "struct url *u" "const char *flags"
 .Ft int
 .Fn fetchStat "struct url *u" "struct url_stat *us" "const char *flags"
 .Ft struct url_ent *
 .Fn fetchList "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchXGetFile "struct url *u" "struct url_stat *us" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchGetFile "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchPutFile "struct url *u" "const char *flags"
 .Ft int
 .Fn fetchStatFile "struct url *u" "struct url_stat *us" "const char *flags"
 .Ft struct url_ent *
 .Fn fetchListFile "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchXGetHTTP "struct url *u" "struct url_stat *us" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchGetHTTP "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchPutHTTP "struct url *u" "const char *flags"
 .Ft int
 .Fn fetchStatHTTP "struct url *u" "struct url_stat *us" "const char *flags"
 .Ft struct url_ent *
 .Fn fetchListHTTP "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchXGetFTP "struct url *u" "struct url_stat *us" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchGetFTP "struct url *u" "const char *flags"
-.Ft FILE *
+.Ft FXRETTYPE
 .Fn fetchPutFTP "struct url *u" "const char *flags"
 .Ft int
 .Fn fetchStatFTP "struct url *u" "struct url_stat *us" "const char *flags"
@@ -288,6 +288,12 @@ or
 functions is read-only, and that a stream returned by one of the
 .Fn fetchPutXXX
 functions is write-only.
+.Pp
+The FXRETTYPE evaluates to
+.Vt FILE *
+on all systems except for Solaris where it evaluates to the
+.Vt estream_t
+type.
 .Sh FILE SCHEME
 .Fn fetchXGetFile ,
 .Fn fetchGetFile

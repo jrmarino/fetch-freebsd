@@ -51,6 +51,10 @@
 #define MINBUFSIZE	16384
 #define TIMEOUT		120
 
+#ifndef TCSASOFT
+#define TCSASOFT	0
+#endif
+
 /* Option flags */
 static int	 A_flag;	/*    -A: do not follow 302 redirects */
 static int	 a_flag;	/*    -a: auto retry */
@@ -176,7 +180,11 @@ sig_handler(int sig)
 	case SIGALRM:
 		sigalrm = 1;
 		break;
+#if defined __linux__ || defined __sun__
+	case SIGPWR:
+#else
 	case SIGINFO:
+#endif
 		siginfo = 1;
 		break;
 	case SIGINT:
@@ -298,13 +306,17 @@ stat_display(struct xferstat *xs, int force)
 	fprintf(stderr, "\r%-46.46s", xs->name);
 	if (xs->rcvd >= xs->size) {
 		stat_bytes(bytes, sizeof bytes, xs->rcvd);
+#ifdef USE_SETPROCTITLE
 		setproctitle("%s [%s]", xs->name, bytes);
+#endif
 		fprintf(stderr, "        %s", bytes);
 	} else {
 		stat_bytes(bytes, sizeof bytes, xs->size);
+#ifdef USE_SETPROCTITLE
 		setproctitle("%s [%d%% of %s]", xs->name,
 		    (int)((100.0 * xs->rcvd) / xs->size),
 		    bytes);
+#endif
 		fprintf(stderr, "%3d%% of %s",
 		    (int)((100.0 * xs->rcvd) / xs->size),
 		    bytes);
@@ -428,8 +440,10 @@ fetch(char *URL, const char *path)
 	struct url_stat us;
 	struct stat sb, nsb;
 	struct xferstat xs;
-	FILE *f, *of;
+	FXRETTYPE f;
+	FXRETTYPE of;
 	size_t size, readcnt, wr;
+	size_t len;
 	off_t count;
 	char flags[8];
 	const char *slash;
@@ -622,13 +636,13 @@ fetch(char *URL, const char *path)
 
 	/* open output file */
 	if (o_stdout) {
-		/* output to stdout */
-		of = stdout;
+		/* output to FXSTDOUT */
+		of = FXSTDOUT;
 	} else if (r_flag && sb.st_size != -1) {
 		/* resume mode, local file exists */
 		if (!F_flag && us.mtime && sb.st_mtime != us.mtime) {
 			/* no match! have to refetch */
-			fclose(f);
+			FXCLOSE(f);
 			/* if precious, warn the user and give up */
 			if (R_flag) {
 				warnx("%s: local modification time "
@@ -638,7 +652,7 @@ fetch(char *URL, const char *path)
 		} else if (url->offset > sb.st_size) {
 			/* gap between what we asked for and what we got */
 			warnx("%s: gap in resume mode", URL);
-			fclose(of);
+			FXCLOSE(of);
 			of = NULL;
 			/* picked up again later */
 		} else if (us.size != -1) {
@@ -653,12 +667,12 @@ fetch(char *URL, const char *path)
 				goto failure;
 			}
 			/* we got it, open local file */
-			if ((of = fopen(path, "r+")) == NULL) {
-				warn("%s: fopen()", path);
+			if ((of = FXOPEN(path, "r+")) == NULL) {
+				warn("%s: FXOPEN()", path);
 				goto failure;
 			}
 			/* check that it didn't move under our feet */
-			if (fstat(fileno(of), &nsb) == -1) {
+			if (fstat(FXFILENO(of), &nsb) == -1) {
 				/* can't happen! */
 				warn("%s: fstat()", path);
 				goto failure;
@@ -667,16 +681,16 @@ fetch(char *URL, const char *path)
 			    nsb.st_ino != sb.st_ino ||
 			    nsb.st_size != sb.st_size) {
 				warnx("%s: file has changed", URL);
-				fclose(of);
+				FXCLOSE(of);
 				of = NULL;
 				sb = nsb;
 				/* picked up again later */
 			}
 		}
 		/* seek to where we left off */
-		if (of != NULL && fseeko(of, url->offset, SEEK_SET) != 0) {
-			warn("%s: fseeko()", path);
-			fclose(of);
+		if (of != NULL && FXSEEKO(of, url->offset, SEEK_SET) != 0) {
+			warn("%s: FXSEEKO()", path);
+			FXCLOSE(of);
 			of = NULL;
 			/* picked up again later */
 		}
@@ -714,22 +728,33 @@ fetch(char *URL, const char *path)
 				slash = path;
 			else
 				++slash;
-			asprintf(&tmppath, "%.*s.fetch.XXXXXX.%s",
-			    (int)(slash - path), path, slash);
+			len = 1 + 14;
+			len += (int)(slash - path);
+			len += strlen(slash);
+			tmppath = (char *) malloc(len);
+			if (tmppath != NULL)
+				if (snprintf (tmppath, len,
+				   "%.*s.fetch.XXXXXX.%s",
+				   (int)(slash - path),
+				   path,
+				   slash) < 0) {
+					warn("%s: tmppath template", path);
+					goto failure;
+				}
 			if (tmppath != NULL) {
 				if (mkstemps(tmppath, strlen(slash) + 1) == -1) {
 					warn("%s: mkstemps()", path);
 					goto failure;
 				}
-				of = fopen(tmppath, "w");
+				of = FXOPEN(tmppath, "w");
 				chown(tmppath, sb.st_uid, sb.st_gid);
 				chmod(tmppath, sb.st_mode & ALLPERMS);
 			}
 		}
 		if (of == NULL)
-			of = fopen(path, "w");
+			of = FXOPEN(path, "w");
 		if (of == NULL) {
-			warn("%s: open()", path);
+			warn("%s: FXOPEN()", path);
 			goto failure;
 		}
 	}
@@ -741,7 +766,7 @@ fetch(char *URL, const char *path)
 	sigalrm = siginfo = sigint = 0;
 
 	/* suck in the data */
-	setvbuf(f, NULL, _IOFBF, B_size);
+	FXSETVBUF(f, NULL, _IOFBF, B_size);
 	signal(SIGINFO, sig_handler);
 	while (!sigint) {
 		if (us.size != -1 && us.size - count < B_size &&
@@ -757,18 +782,18 @@ fetch(char *URL, const char *path)
 		if (size == 0)
 			break;
 
-		if ((readcnt = fread(buf, 1, size, f)) < size) {
-			if (ferror(f) && errno == EINTR && !sigint)
-				clearerr(f);
+		if ((readcnt = FXREAD(buf, 1, size, f)) < size) {
+			if (FXERROR(f) && errno == EINTR && !sigint)
+				FXCLEARERR(f);
 			else if (readcnt == 0)
 				break;
 		}
 
 		stat_update(&xs, count += readcnt);
 		for (ptr = buf; readcnt > 0; ptr += wr, readcnt -= wr)
-			if ((wr = fwrite(ptr, 1, readcnt, of)) < readcnt) {
-				if (ferror(of) && errno == EINTR && !sigint)
-					clearerr(of);
+			if ((wr = FXWRITE(ptr, 1, readcnt, of)) < readcnt) {
+				if (FXERROR(of) && errno == EINTR && !sigint)
+					FXCLEARERR(of);
 				else
 					break;
 			}
@@ -776,7 +801,7 @@ fetch(char *URL, const char *path)
 			break;
 	}
 	if (!sigalrm)
-		sigalrm = ferror(f) && errno == ETIMEDOUT;
+		sigalrm = FXERROR(f) && errno == ETIMEDOUT;
 	signal(SIGINFO, SIG_DFL);
 
 	stat_end(&xs);
@@ -792,7 +817,7 @@ fetch(char *URL, const char *path)
 	    (stat(path, &sb) != -1) && sb.st_mode & S_IFREG) {
 		struct timeval tv[2];
 
-		fflush(of);
+		FXFLUSH(of);
 		tv[0].tv_sec = (long)(us.atime ? us.atime : us.mtime);
 		tv[1].tv_sec = (long)us.mtime;
 		tv[0].tv_usec = tv[1].tv_usec = 0;
@@ -814,11 +839,11 @@ fetch(char *URL, const char *path)
 
 	if (!sigalrm) {
 		/* check the status of our files */
-		if (ferror(f))
+		if (FXERROR(f))
 			warn("%s", URL);
-		if (ferror(of))
+		if (FXERROR(of))
 			warn("%s", path);
-		if (ferror(f) || ferror(of))
+		if (FXERROR(f) || FXERROR(of))
 			goto failure;
 	}
 
@@ -846,7 +871,7 @@ fetch(char *URL, const char *path)
 	}
 	goto done;
  failure:
-	if (of && of != stdout && !R_flag && !r_flag)
+	if (of && of != FXSTDOUT && !R_flag && !r_flag)
 		if (stat(path, &sb) != -1 && (sb.st_mode & S_IFREG))
 			unlink(tmppath ? tmppath : path);
 	if (R_flag && tmppath != NULL && sb.st_size == -1)
@@ -856,9 +881,9 @@ fetch(char *URL, const char *path)
 	goto done;
  done:
 	if (f)
-		fclose(f);
-	if (of && of != stdout)
-		fclose(of);
+		FXCLOSE(f);
+	if (of && of != FXSTDOUT)
+		FXCLOSE(of);
 	if (url)
 		fetchFreeURL(url);
 	if (tmppath != NULL)
@@ -896,6 +921,7 @@ main(int argc, char *argv[])
 	const char *p, *s;
 	char *end, *q;
 	int c, e, r;
+	size_t len;
 
 
 	while ((c = getopt_long(argc, argv,
@@ -1072,9 +1098,18 @@ main(int argc, char *argv[])
 		/* XXX this is a hack. */
 		if (strcspn(h_hostname, "@:/") != strlen(h_hostname))
 			errx(1, "invalid hostname");
-		if (asprintf(argv, "ftp://%s/%s/%s", h_hostname,
-		    c_dirname ? c_dirname : "", f_filename) == -1)
-			errx(1, "%s", strerror(ENOMEM));
+		len = 1 + 8;
+		len += strlen(h_hostname);
+		len += c_dirname ? strlen(c_dirname) : 0;
+		len += strlen(f_filename);
+		argv[argc] = (char *) malloc(len);
+		if (argv[argc] == NULL)
+			err("fail to allocate memory for -f/-h option");
+		if (snprintf(argv[argc], len, "ftp://%s/%s/%s",
+		    h_hostname,
+		    c_dirname ? c_dirname : "",
+		    f_filename) < 0)
+			err("failed to compose -f/-h option");
 		argc++;
 	}
 
@@ -1162,7 +1197,16 @@ main(int argc, char *argv[])
 			if (o_stdout) {
 				e = fetch(*argv, "-");
 			} else if (o_directory) {
-				asprintf(&q, "%s/%s", o_filename, p);
+				len = 1 + 1;
+				len += strlen(o_filename);
+				len += strlen(p);
+				q = (char *) malloc(len);
+				if (q == NULL)
+					err("failed memory alloc at o_flag");
+				if (snprintf(q, len, "%s/%s", o_filename, p) <0) {
+					free(q);
+					err("failed q definition at o_flag");
+				}
 				e = fetch(*argv, q);
 				free(q);
 			} else {

@@ -48,9 +48,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef WITH_SSL
 #include <openssl/x509v3.h>
-#endif
 
 #include "fetch.h"
 #include "common.h"
@@ -441,7 +439,6 @@ fail:
 	return (NULL);
 }
 
-#ifdef WITH_SSL
 /*
  * Convert characters A-Z to lowercase (intentionally avoid any locale
  * specific conversions).
@@ -931,7 +928,6 @@ fetch_ssl_cb_verify_crt(int verified, X509_STORE_CTX *ctx)
 	return (verified);
 }
 
-#endif
 
 /*
  * Enable SSL on a connection.
@@ -939,7 +935,6 @@ fetch_ssl_cb_verify_crt(int verified, X509_STORE_CTX *ctx)
 int
 fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 {
-#ifdef WITH_SSL
 	int ret, ssl_err;
 	X509_NAME *name;
 	char *str;
@@ -1018,20 +1013,12 @@ fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 	}
 
 	return (0);
-#else
-	(void)conn;
-	(void)verbose;
-	(void)URL;
-	fprintf(stderr, "SSL support disabled\n");
-	return (-1);
-#endif
 }
 
 #define FETCH_READ_WAIT		-2
 #define FETCH_READ_ERROR	-1
 #define FETCH_READ_DONE		 0
 
-#ifdef WITH_SSL
 static ssize_t
 fetch_ssl_read(SSL *ssl, char *buf, size_t len)
 {
@@ -1051,7 +1038,6 @@ fetch_ssl_read(SSL *ssl, char *buf, size_t len)
 	}
 	return (rlen);
 }
-#endif
 
 static ssize_t
 fetch_socket_read(int sd, char *buf, size_t len)
@@ -1109,11 +1095,9 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 		 * In the non-SSL case, it may improve performance (very
 		 * slightly) when reading small amounts of data.
 		 */
-#ifdef WITH_SSL
 		if (conn->ssl != NULL)
 			rlen = fetch_ssl_read(conn->ssl, buf, len);
 		else
-#endif
 			rlen = fetch_socket_read(conn->sd, buf, len);
 		if (rlen >= 0) {
 			break;
@@ -1252,12 +1236,10 @@ fetch_writev(conn_t *conn, struct iovec *iov, int iovcnt)
 			}
 		}
 		errno = 0;
-#ifdef WITH_SSL
 		if (conn->ssl != NULL)
 			wlen = SSL_write(conn->ssl,
 			    iov->iov_base, iov->iov_len);
 		else
-#endif
 			wlen = writev(conn->sd, iov, iovcnt);
 		if (wlen == 0) {
 			/* we consider a short write a failure */
@@ -1320,7 +1302,6 @@ fetch_close(conn_t *conn)
 
 	if (--conn->ref > 0)
 		return (0);
-#ifdef WITH_SSL
 	if (conn->ssl) {
 		SSL_shutdown(conn->ssl);
 		SSL_set_connect_state(conn->ssl);
@@ -1335,7 +1316,6 @@ fetch_close(conn_t *conn)
 		X509_free(conn->ssl_cert);
 		conn->ssl_cert = NULL;
 	}
-#endif
 	ret = close(conn->sd);
 	free(conn->buf);
 	free(conn);
@@ -1380,7 +1360,7 @@ fetch_add_entry(struct url_ent **p, int *size, int *len,
 /*** Authentication-related utility functions ********************************/
 
 static const char *
-fetch_read_word(FILE *f)
+fetch_read_word(FXRETTYPE f)
 {
 	static char word[1024];
 
@@ -1430,7 +1410,7 @@ fetch_netrc_auth(struct url *url)
 {
 	const char *word;
 	int serrno;
-	FILE *f;
+	FXRETTYPE f;
 
 	if (url->netrcfd < 0)
 		url->netrcfd = fetch_netrc_open();
@@ -1485,12 +1465,12 @@ fetch_netrc_auth(struct url *url)
 			break;
 		}
 	}
-	fclose(f);
+	FXCLOSE(f);
 	url->netrcfd = -1;
 	return (0);
 ferr:
 	serrno = errno;
-	fclose(f);
+	FXCLOSE(f);
 	url->netrcfd = -1;
 	errno = serrno;
 	return (-1);
