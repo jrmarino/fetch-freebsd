@@ -822,7 +822,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    (e = fetch_bind(sd, sa.ss_family, bindaddr)) != 0)
 			goto ouch;
-		if (connect(sd, (struct sockaddr *)&sa, sizeof(sa)) == -1)
+		if (connect(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
 			goto sysouch;
 
 		/* make the server initiate the transfer */
@@ -839,14 +839,12 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		int arg;
 #endif
 		int d;
-		socklen_t sslen;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 
 		switch (sa.ss_family) {
 		case AF_INET6:
 			((struct sockaddr_in6 *)&sa)->sin6_port = 0;
-			sslen = sizeof(struct sockaddr_in6);
 #ifdef IPV6_PORTRANGE
 			arg = low ? IPV6_PORTRANGE_DEFAULT : IPV6_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IPV6, IPV6_PORTRANGE,
@@ -858,7 +856,6 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			break;
 		case AF_INET:
 			((struct sockaddr_in *)&sa)->sin_port = 0;
-			sslen = sizeof(struct sockaddr_in);
 #ifdef IP_PORTRANGE
 			arg = low ? IP_PORTRANGE_DEFAULT : IP_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IP, IP_PORTRANGE,
@@ -868,12 +865,8 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			if (verbose)
 				fetch_info("binding IPv4 data socket");
 			break;
-		default:
-			sslen = 0;
-			if (verbose)
-				fetch_info("binding unknown family socket");
 		}
-		if (bind(sd, (struct sockaddr *)&sa, sslen) == -1)
+		if (bind(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
 			goto sysouch;
 		if (listen(sd, 1) == -1)
 			goto sysouch;
