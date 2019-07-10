@@ -35,7 +35,6 @@
 #include <sys/time.h>
 
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <getopt.h>
 #include <signal.h>
@@ -468,11 +467,11 @@ fetch(char *URL, const char *path)
 	/* parse URL */
 	url = NULL;
 	if (*URL == '\0') {
-		warnx("empty URL");
+		fprintf(stderr, "empty URL");
 		goto failure;
 	}
 	if ((url = fetchParseURL(URL)) == NULL) {
-		warnx("%s: parse error", URL);
+		fprintf(stderr, "%s: parse error", URL);
 		goto failure;
 	}
 
@@ -517,7 +516,8 @@ fetch(char *URL, const char *path)
 		timeout = T_secs ? T_secs : http_timeout;
 		if (i_flag) {
 			if (stat(i_filename, &sb)) {
-				warn("%s: stat()", i_filename);
+				fprintf(stderr, "%s: stat(): %s", i_filename,
+				  strerror(errno));
 				goto failure;
 			}
 			url->ims_time = sb.st_mtime;
@@ -538,7 +538,7 @@ fetch(char *URL, const char *path)
 		if (sigalrm || sigint)
 			goto signal;
 		if (r == -1) {
-			warnx("%s", fetchLastErrString);
+			fprintf(stderr, "%s", fetchLastErrString);
 			goto failure;
 		}
 		if (us.size == -1)
@@ -575,7 +575,7 @@ fetch(char *URL, const char *path)
 			sb.st_size = -1;
 		}
 		if (r == -1 && errno != ENOENT) {
-			warnx("%s: stat()", path);
+			fprintf(stderr, "%s: stat()", path);
 			goto failure;
 		}
 	}
@@ -589,7 +589,7 @@ fetch(char *URL, const char *path)
 	if (sigalrm || sigint)
 		goto signal;
 	if (f == NULL) {
-		warnx("%s: %s", URL, fetchLastErrString);
+		fprintf(stderr, "%s: %s", URL, fetchLastErrString);
 		if (i_flag && (strcmp(url->scheme, SCHEME_HTTP) == 0 ||
 		    strcmp(url->scheme, SCHEME_HTTPS) == 0) &&
 		    fetchLastErrCode == FETCH_OK &&
@@ -606,9 +606,9 @@ fetch(char *URL, const char *path)
 	/* check that size is as expected */
 	if (S_size) {
 		if (us.size == -1) {
-			warnx("%s: size unknown", URL);
+			fprintf(stderr, "%s: size unknown", URL);
 		} else if (us.size != S_size) {
-			warnx("%s: size mismatch: expected %jd, actual %jd",
+			fprintf(stderr, "%s: size mismatch: expected %jd, actual %jd",
 			    URL, (intmax_t)S_size, (intmax_t)us.size);
 			goto failure;
 		}
@@ -617,14 +617,15 @@ fetch(char *URL, const char *path)
 	/* symlink instead of copy */
 	if (l_flag && strcmp(url->scheme, "file") == 0 && !o_stdout) {
 		if (symlink(url->doc, path) == -1) {
-			warn("%s: symlink()", path);
+			fprintf(stderr, "%s: symlink(): %s", path,
+			  strerror(errno));
 			goto failure;
 		}
 		goto success;
 	}
 
 	if (us.size == -1 && !o_stdout && v_level > 0)
-		warnx("%s: size of remote file is not known", URL);
+		fprintf(stderr, "%s: size of remote file is not known", URL);
 	if (v_level > 1) {
 		if (sb.st_size != -1)
 			fprintf(stderr, "local size / mtime: %jd / %ld\n",
@@ -645,13 +646,13 @@ fetch(char *URL, const char *path)
 			FXCLOSE(f);
 			/* if precious, warn the user and give up */
 			if (R_flag) {
-				warnx("%s: local modification time "
+				fprintf(stderr, "%s: local modification time "
 				    "does not match remote", path);
 				goto failure_keep;
 			}
 		} else if (url->offset > sb.st_size) {
 			/* gap between what we asked for and what we got */
-			warnx("%s: gap in resume mode", URL);
+			fprintf(stderr, "%s: gap in resume mode", URL);
 			FXCLOSE(of);
 			of = NULL;
 			/* picked up again later */
@@ -661,26 +662,28 @@ fetch(char *URL, const char *path)
 				goto success;
 			if (sb.st_size > us.size) {
 				/* local file too long! */
-				warnx("%s: local file (%jd bytes) is longer "
+				fprintf(stderr, "%s: local file (%jd bytes) is longer "
 				    "than remote file (%jd bytes)", path,
 				    (intmax_t)sb.st_size, (intmax_t)us.size);
 				goto failure;
 			}
 			/* we got it, open local file */
 			if ((of = FXOPEN(path, "r+")) == NULL) {
-				warn("%s: FXOPEN()", path);
+				fprintf(stderr, "%s: FXOPEN(): %s", path,
+				  strerror(errno));
 				goto failure;
 			}
 			/* check that it didn't move under our feet */
 			if (fstat(FXFILENO(of), &nsb) == -1) {
 				/* can't happen! */
-				warn("%s: fstat()", path);
+				fprintf(stderr, "%s: fstat()", path,
+				  strerror(errno));
 				goto failure;
 			}
 			if (nsb.st_dev != sb.st_dev ||
 			    nsb.st_ino != sb.st_ino ||
 			    nsb.st_size != sb.st_size) {
-				warnx("%s: file has changed", URL);
+				fprintf(stderr, "%s: file has changed", URL);
 				FXCLOSE(of);
 				of = NULL;
 				sb = nsb;
@@ -689,7 +692,8 @@ fetch(char *URL, const char *path)
 		}
 		/* seek to where we left off */
 		if (of != NULL && FXSEEKO(of, url->offset, SEEK_SET) != 0) {
-			warn("%s: FXSEEKO()", path);
+			fprintf(stderr, "%s: FXSEEKO()", path,
+			  strerror(errno));
 			FXCLOSE(of);
 			of = NULL;
 			/* picked up again later */
@@ -715,7 +719,7 @@ fetch(char *URL, const char *path)
 			 */
 			url->offset = 0;
 			if ((f = fetchXGet(url, &us, flags)) == NULL) {
-				warnx("%s: %s", URL, fetchLastErrString);
+				fprintf(stderr, "%s: %s", URL, fetchLastErrString);
 				goto failure;
 			}
 			if (sigint)
@@ -738,12 +742,15 @@ fetch(char *URL, const char *path)
 				   (int)(slash - path),
 				   path,
 				   slash) < 0) {
-					warn("%s: tmppath template", path);
+					fprintf(stderr,
+					  "%s: tmppath template: %s",
+					  path, strerror(errno));
 					goto failure;
 				}
 			if (tmppath != NULL) {
 				if (mkstemps(tmppath, strlen(slash) + 1) == -1) {
-					warn("%s: mkstemps()", path);
+					fprintf(stderr, "%s: mkstemps(): %s",
+					  path, strerror(errno));
 					goto failure;
 				}
 				of = FXOPEN(tmppath, "w");
@@ -754,7 +761,8 @@ fetch(char *URL, const char *path)
 		if (of == NULL)
 			of = FXOPEN(path, "w");
 		if (of == NULL) {
-			warn("%s: FXOPEN()", path);
+			fprintf(stderr, "%s: FXOPEN()", path,
+			  strerror(errno));
 			goto failure;
 		}
 	}
@@ -782,7 +790,7 @@ fetch(char *URL, const char *path)
 		if (size == 0)
 			break;
 
-		if ((readcnt = FXREAD(buf, 1, size, f)) < size) {
+		if ((readcnt = FXFREAD(buf, 1, size, f)) < size) {
 			if (FXERROR(f) && errno == EINTR && !sigint)
 				FXCLEARERR(f);
 			else if (readcnt == 0)
@@ -791,7 +799,7 @@ fetch(char *URL, const char *path)
 
 		stat_update(&xs, count += readcnt);
 		for (ptr = buf; readcnt > 0; ptr += wr, readcnt -= wr)
-			if ((wr = FXWRITE(ptr, 1, readcnt, of)) < readcnt) {
+			if ((wr = FXFWRITE(ptr, 1, readcnt, of)) < readcnt) {
 				if (FXERROR(of) && errno == EINTR && !sigint)
 					FXCLEARERR(of);
 				else
@@ -822,14 +830,16 @@ fetch(char *URL, const char *path)
 		tv[1].tv_sec = (long)us.mtime;
 		tv[0].tv_usec = tv[1].tv_usec = 0;
 		if (utimes(tmppath ? tmppath : path, tv))
-			warn("%s: utimes()", tmppath ? tmppath : path);
+			fprintf(stderr, "%s: utimes(): %s",
+			  tmppath ? tmppath : path,
+			  strerror(errno));
 	}
 
 	/* timed out or interrupted? */
 	if (sigalrm)
-		warnx("transfer timed out");
+		fprintf(stderr, "transfer timed out");
 	if (sigint) {
-		warnx("transfer interrupted");
+		fprintf(stderr, "transfer interrupted");
 		goto failure;
 	}
 
@@ -840,16 +850,16 @@ fetch(char *URL, const char *path)
 	if (!sigalrm) {
 		/* check the status of our files */
 		if (FXERROR(f))
-			warn("%s", URL);
+			fprintf(stderr, "%s: %s", URL, strerror(errno));
 		if (FXERROR(of))
-			warn("%s", path);
+			fprintf(stderr, "%s: %s", path, strerror(errno));
 		if (FXERROR(f) || FXERROR(of))
 			goto failure;
 	}
 
 	/* did the transfer complete normally? */
 	if (us.size != -1 && count < us.size) {
-		warnx("%s appears to be truncated: %jd/%jd bytes",
+		fprintf(stderr, "%s appears to be truncated: %jd/%jd bytes",
 		    path, (intmax_t)count, (intmax_t)us.size);
 		goto failure_keep;
 	}
@@ -859,14 +869,14 @@ fetch(char *URL, const char *path)
 	 * expect, assume the worst (i.e. we didn't get all of it)
 	 */
 	if (sigalrm && us.size == -1) {
-		warnx("%s may be truncated", path);
+		fprintf(stderr, "%s may be truncated", path);
 		goto failure_keep;
 	}
 
  success:
 	r = 0;
 	if (tmppath != NULL && rename(tmppath, path) == -1) {
-		warn("%s: rename()", path);
+		fprintf(stderr, "%s: rename(): %s", path, strerror(errno));
 		goto failure_keep;
 	}
 	goto done;
@@ -945,11 +955,14 @@ main(int argc, char *argv[])
 			break;
 		case 'B':
 			B_size = (off_t)strtol(optarg, &end, 10);
-			if (*optarg == '\0' || *end != '\0')
-				errx(1, "invalid buffer size (%s)", optarg);
+			if (*optarg == '\0' || *end != '\0') {
+				fprintf(stderr, "invalid buffer size (%s)",
+				  optarg);
+				exit(1);
+			}
 			break;
 		case 'b':
-			warnx("warning: the -b option is deprecated");
+			fprintf(stderr, "warning: the -b option is deprecated");
 			b_flag = 1;
 			break;
 		case 'c':
@@ -965,7 +978,7 @@ main(int argc, char *argv[])
 			f_filename = optarg;
 			break;
 		case 'H':
-			warnx("the -H option is now implicit, "
+			fprintf(stderr, "the -H option is now implicit, "
 			    "use -U to disable");
 			break;
 		case 'h':
@@ -984,9 +997,11 @@ main(int argc, char *argv[])
 			break;
 		case 'M':
 		case 'm':
-			if (r_flag)
-				errx(1, "the -m and -r flags "
-				    "are mutually exclusive");
+			if (r_flag) {
+				fprintf(stderr,
+				  "the -m and -r flags are mutually exclusive");
+				exit(1);
+			}
 			m_flag = 1;
 			break;
 		case 'N':
@@ -1006,27 +1021,34 @@ main(int argc, char *argv[])
 			R_flag = 1;
 			break;
 		case 'r':
-			if (m_flag)
-				errx(1, "the -m and -r flags "
-				    "are mutually exclusive");
+			if (m_flag) {
+				fprintf(stderr,
+				  "the -m and -r flags are mutually exclusive");
+				exit(1);
+			}
 			r_flag = 1;
 			break;
 		case 'S':
 			S_size = (off_t)strtol(optarg, &end, 10);
-			if (*optarg == '\0' || *end != '\0')
-				errx(1, "invalid size (%s)", optarg);
+			if (*optarg == '\0' || *end != '\0') {
+				fprintf(stderr, "invalid size (%s)", optarg);
+				exit(1);
+			}
 			break;
 		case 's':
 			s_flag = 1;
 			break;
 		case 'T':
 			T_secs = strtol(optarg, &end, 10);
-			if (*optarg == '\0' || *end != '\0')
-				errx(1, "invalid timeout (%s)", optarg);
+			if (*optarg == '\0' || *end != '\0') {
+				fprintf(stderr, "invalid timeout (%s)",
+				  optarg);
+				exit(1);
+			}
 			break;
 		case 't':
 			t_flag = 1;
-			warnx("warning: the -t option is deprecated");
+			fprintf(stderr, "warning: the -t option is deprecated");
 			break;
 		case 'U':
 			U_flag = 1;
@@ -1037,8 +1059,10 @@ main(int argc, char *argv[])
 		case 'w':
 			a_flag = 1;
 			w_secs = strtol(optarg, &end, 10);
-			if (*optarg == '\0' || *end != '\0')
-				errx(1, "invalid delay (%s)", optarg);
+			if (*optarg == '\0' || *end != '\0') {
+				fprintf(stderr, "invalid delay (%s)", optarg);
+				exit(1);
+			}
 			break;
 		case OPTION_BIND_ADDRESS:
 			setenv("FETCH_BIND_ADDRESS", optarg, 1);
@@ -1096,20 +1120,28 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 		/* XXX this is a hack. */
-		if (strcspn(h_hostname, "@:/") != strlen(h_hostname))
-			errx(1, "invalid hostname");
+		if (strcspn(h_hostname, "@:/") != strlen(h_hostname)) {
+			fprintf(stderr, "invalid hostname");
+			exit(1);
+		}
 		len = 1 + 8;
 		len += strlen(h_hostname);
 		len += c_dirname ? strlen(c_dirname) : 0;
 		len += strlen(f_filename);
 		argv[argc] = (char *) malloc(len);
-		if (argv[argc] == NULL)
-			err("fail to allocate memory for -f/-h option");
+		if (argv[argc] == NULL) {
+			fprintf(stderr,
+			  "failed to allocate memory for -f/-h option");
+			exit (1);
+		}
 		if (snprintf(argv[argc], len, "ftp://%s/%s/%s",
 		    h_hostname,
 		    c_dirname ? c_dirname : "",
-		    f_filename) < 0)
-			err("failed to compose -f/-h option");
+		    f_filename) < 0) {
+			fprintf(stderr, "failed to compose -f/-h option: %s",
+			  strerror(errno));
+			exit (1);
+		}
 		argc++;
 	}
 
@@ -1121,21 +1153,23 @@ main(int argc, char *argv[])
 	/* allocate buffer */
 	if (B_size < MINBUFSIZE)
 		B_size = MINBUFSIZE;
-	if ((buf = malloc(B_size)) == NULL)
-		errx(1, "%s", strerror(ENOMEM));
+	if ((buf = malloc(B_size)) == NULL) {
+		fprintf(stderr, "%s", strerror(ENOMEM));
+		exit(1);
+	}
 
 	/* timeouts */
 	if ((s = getenv("FTP_TIMEOUT")) != NULL) {
 		ftp_timeout = strtol(s, &end, 10);
 		if (*s == '\0' || *end != '\0' || ftp_timeout < 0) {
-			warnx("FTP_TIMEOUT (%s) is not a positive integer", s);
+			fprintf(stderr, "FTP_TIMEOUT (%s) is not a positive integer", s);
 			ftp_timeout = 0;
 		}
 	}
 	if ((s = getenv("HTTP_TIMEOUT")) != NULL) {
 		http_timeout = strtol(s, &end, 10);
 		if (*s == '\0' || *end != '\0' || http_timeout < 0) {
-			warnx("HTTP_TIMEOUT (%s) is not a positive integer", s);
+			fprintf(stderr, "HTTP_TIMEOUT (%s) is not a positive integer", s);
 			http_timeout = 0;
 		}
 	}
@@ -1155,11 +1189,15 @@ main(int argc, char *argv[])
 			o_stdout = 1;
 		} else if (stat(o_filename, &sb) == -1) {
 			if (errno == ENOENT) {
-				if (argc > 1)
-					errx(1, "%s is not a directory",
-					    o_filename);
+				if (argc > 1) {
+					fprintf(stderr,
+					  "%s is not a directory", o_filename);
+					exit(1);
+				}
 			} else {
-				err(1, "%s", o_filename);
+				fprintf(stderr, "%s: %s", o_filename,
+				  strerror(errno));
+				exit(1);
 			}
 		} else {
 			if (sb.st_mode & S_IFDIR)
@@ -1179,8 +1217,11 @@ main(int argc, char *argv[])
 	if (v_tty)
 		fetchAuthMethod = query_auth;
 	if (N_filename != NULL)
-		if (setenv("NETRC", N_filename, 1) == -1)
-			err(1, "setenv: cannot set NETRC=%s", N_filename);
+		if (setenv("NETRC", N_filename, 1) == -1) {
+			fprintf(stderr, "setenv: cannot set NETRC=%s: %s",
+			  N_filename, strerror(errno));
+			exit(1);
+		}
 
 	while (argc) {
 		if ((p = strrchr(*argv, '/')) == NULL)
@@ -1201,11 +1242,17 @@ main(int argc, char *argv[])
 				len += strlen(o_filename);
 				len += strlen(p);
 				q = (char *) malloc(len);
-				if (q == NULL)
-					err("failed memory alloc at o_flag");
+				if (q == NULL) {
+					fprintf(stderr,
+					  "failed memory alloc at o_flag");
+					exit(1);
+				}
 				if (snprintf(q, len, "%s/%s", o_filename, p) <0) {
 					free(q);
-					err("failed q definition at o_flag");
+					fprintf(stderr,
+					  "failed q definition at o_flag: %s",
+					  strerror(errno));
+					exit(1);
 				}
 				e = fetch(*argv, q);
 				free(q);

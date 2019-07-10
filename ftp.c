@@ -60,7 +60,6 @@
 #include <netinet/in.h>
 
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -1272,6 +1271,6 @@ fetchStatFTP(struct url *url, struct url_stat *us, const char *flags)
 struct url_ent *
 fetchListFTP(struct url *url __unused, const char *flags __unused)
 {
-	warnx("fetchListFTP(): not implemented");
+	fprintf(stderr, "fetchListFTP(): not implemented");
 	return (NULL);
 }

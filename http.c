@@ -78,7 +78,6 @@
 #include <sys/time.h>
 
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <locale.h>
 #include <netdb.h>
@@ -349,7 +348,7 @@ static FXRETTYPE
 http_funopen(conn_t *conn, int chunked)
 {
 	struct httpio *io;
-	FXRETTYPE *f;
+	FXRETTYPE f;
 #ifdef USE_ESTREAM
 	es_cookie_io_functions_t http_cookie_functions =
 	{
@@ -1380,7 +1379,7 @@ http_basic_auth(conn_t *conn, const char *hdr, const char *usr, const char *pwd)
 		errno = ENOMEM;
 		return (-1);
 	}
-	if (snprintf(upw, "%s:%s", usr, pwd) < 0) {
+	if (snprintf(upw, len, "%s:%s", usr, pwd) < 0) {
 		free(upw);
 		return (-1);
 	}
@@ -1585,7 +1584,7 @@ http_print_html(FXRETTYPE out, FXRETTYPE in)
 				tag = 0;
 			} else if (!tag && *q == '<') {
 				if (q > p)
-					FXWRITE(p, q - p, 1, out);
+					FXFWRITE(p, q - p, 1, out);
 				tag = 1;
 				if (q + 3 < line + len &&
 				    strcmp(q, "<!--") == 0) {
@@ -1595,7 +1594,7 @@ http_print_html(FXRETTYPE out, FXRETTYPE in)
 			}
 		}
 		if (!tag && q > p)
-			FXWRITE(p, q - p, 1, out);
+			FXFWRITE(p, q - p, 1, out);
 		fputc('\n', out);
 	}
 	free(line);
@@ -2092,7 +2091,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	URL->offset = offset;
 	URL->length = clength;
 
-	/* wrap it up in a FXRETTYPE/
+	/* wrap it up in a FXRETTYPE */
 	if ((f = http_funopen(conn, chunked)) == NULL) {
 		fetch_syserr();
 		goto ouch;
@@ -2155,7 +2154,7 @@ fetchGetHTTP(struct url *URL, const char *flags)
 FXRETTYPE
 fetchPutHTTP(struct url *URL __unused, const char *flags __unused)
 {
-	warnx("fetchPutHTTP(): not implemented");
+	fprintf(stderr, "fetchPutHTTP(): not implemented");
 	return (NULL);
 }
 
@@ -2180,7 +2179,7 @@ fetchStatHTTP(struct url *URL, struct url_stat *us, const char *flags)
 struct url_ent *
 fetchListHTTP(struct url *url __unused, const char *flags __unused)
 {
-	warnx("fetchListHTTP(): not implemented");
+	fprintf(stderr, "fetchListHTTP(): not implemented");
 	return (NULL);
 }
 
@@ -2188,7 +2187,6 @@ FXRETTYPE
 fetchReqHTTP(struct url *URL, const char *method, const char *flags,
 	const char *content_type, const char *body)
 {
-
 	return (http_request_body(URL, method, NULL, http_get_proxy(URL, flags),
 	    flags, content_type, body));
 }
