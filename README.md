@@ -20,3 +20,7 @@ The BSD-style makefile build and installs:
     The fetch utility provides a command-line interface to the fetch(3)
     library.  Its purpose is to retrieve the file(s) pointed to by the URL(s)
     on the command line.
+
+### Manual Page
+
+[FreeBSD version](https://www.freebsd.org/cgi/man.cgi?fetch(1))
