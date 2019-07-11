@@ -676,6 +676,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	int pasv, verbose;
 	int e, sd = -1;
 	socklen_t l;
+	socklen_t sslen;
 	char *s;
 	FXRETTYPE df;
 
@@ -800,6 +801,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 				memcpy(&sin6->sin6_addr, addr + 2, 16);
 				memcpy(&sin6->sin6_port, addr + 19, 2);
 			}
+			sslen = sizeof(struct sockaddr_in6);
 			break;
 		case AF_INET:
 			sin4 = (struct sockaddr_in *)&sa;
@@ -809,6 +811,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 				memcpy(&sin4->sin_addr, addr, 4);
 				memcpy(&sin4->sin_port, addr + 4, 2);
 			}
+			sslen = sizeof(struct sockaddr_in);
 			break;
 		default:
 			e = FTP_PROTOCOL_ERROR; /* XXX: error code should be prepared */
@@ -822,7 +825,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    (e = fetch_bind(sd, sa.ss_family, bindaddr)) != 0)
 			goto ouch;
-		if (connect(sd, (struct sockaddr *)&sa, 1) == -1)
+		if (connect(sd, (struct sockaddr *)&sa, sslen) == -1)
 			goto sysouch;
 
 		/* make the server initiate the transfer */
@@ -839,7 +842,6 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		int arg;
 #endif
 		int d;
-		socklen_t sslen;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 
