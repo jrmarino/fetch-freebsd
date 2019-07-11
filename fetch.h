@@ -47,6 +47,10 @@
 #define	PATH_MAX	1024
 #endif
 
+#ifndef IPPORT_MAX
+#define IPPORT_MAX	65535u
+#endif
+
 #ifdef __sun__
 #define USE_ESTREAM
 #endif

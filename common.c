@@ -29,6 +29,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -521,6 +525,31 @@ fetch_ssl_hname_is_only_numbers(const char *hostname, size_t len)
 }
 
 /*
+ * Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+static char *
+local_strnstr(const char *s, const char *find, size_t slen)
+{
+	char c, sc;
+	size_t len;
+
+	if ((c = *find++) != '\0') {
+		len = strlen(find);
+		do {
+			do {
+				if (slen-- < 1 || (sc = *s++) == '\0')
+					return (NULL);
+			} while (sc != c);
+			if (len > slen)
+				return (NULL);
+		} while (strncmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)s);
+}
+
+/*
  * Check if the host name h passed matches the pattern passed in m which
  * is usually part of subjectAltName or CN of a certificate presented to
  * the client. This includes wildcard matching. The algorithm is based on
@@ -536,28 +565,28 @@ fetch_ssl_hname_match(const char *h, size_t hlen, const char *m,
 
 	if (!(h && *h && m && *m))
 		return (0);
-	if ((wc = strnstr(m, "*", mlen)) == NULL)
+	if ((wc = local_strnstr(m, "*", mlen)) == NULL)
 		return (fetch_ssl_hname_equal(h, hlen, m, mlen));
 	wcidx = wc - m;
 	/* hostname should not be just dots and numbers */
 	if (fetch_ssl_hname_is_only_numbers(h, hlen))
 		return (0);
 	/* only one wildcard allowed in pattern */
-	if (strnstr(wc + 1, "*", mlen - wcidx - 1) != NULL)
+	if (local_strnstr(wc + 1, "*", mlen - wcidx - 1) != NULL)
 		return (0);
 	/*
 	 * there must be at least two more domain labels and
 	 * wildcard has to be in the leftmost label (RFC6125)
 	 */
-	mdot1 = strnstr(m, ".", mlen);
+	mdot1 = local_strnstr(m, ".", mlen);
 	if (mdot1 == NULL || mdot1 < wc || (mlen - (mdot1 - m)) < 4)
 		return (0);
 	mdot1idx = mdot1 - m;
-	mdot2 = strnstr(mdot1 + 1, ".", mlen - mdot1idx - 1);
+	mdot2 = local_strnstr(mdot1 + 1, ".", mlen - mdot1idx - 1);
 	if (mdot2 == NULL || (mlen - (mdot2 - m)) < 2)
 		return (0);
 	/* hostname must contain a dot and not be the 1st char */
-	hdot = strnstr(h, ".", hlen);
+	hdot = local_strnstr(h, ".", hlen);
 	if (hdot == NULL || hdot == h)
 		return (0);
 	hdotidx = hdot - h;
