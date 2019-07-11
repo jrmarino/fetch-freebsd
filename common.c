@@ -1520,12 +1520,12 @@ fetch_netrc_auth(struct url *url)
 			break;
 		}
 	}
-	FXCLOSE(f);
+	fclose(f);
 	url->netrcfd = -1;
 	return (0);
 ferr:
 	serrno = errno;
-	FXCLOSE(f);
+	fclose(f);
 	url->netrcfd = -1;
 	errno = serrno;
 	return (-1);
