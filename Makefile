@@ -40,7 +40,7 @@ LIB_LINK=	lib${LIB}.so
 .SUFFIXES:	.So .c
 
 .if "${OPSYS}" == "Linux"
-# LIBS+=		${PREFIX}/lib/libbsd.a
+SRCS+=		funopen.c funopen.h
 LDFLAGS+=	-lpthread
 TSORT=		tsort 2>/dev/null
 .elif "${OPSYS}" == "SunOS"
