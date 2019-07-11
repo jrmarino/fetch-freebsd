@@ -481,7 +481,7 @@ ftp_stat(conn_t *conn, const char *file, struct url_stat *us)
 	tm.tm_mon--;
 	tm.tm_year -= 1900;
 	tm.tm_isdst = -1;
-	t = timegm(&tm);
+	t = mktime(&tm);
 	if (t == (time_t)-1)
 		t = time(NULL);
 	us->mtime = t;

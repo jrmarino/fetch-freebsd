@@ -1169,6 +1169,8 @@ main(int argc, char *argv[])
 		usage();
 		exit(1);
 	}
+	/* Set zulu time for mktime() */
+	setenv("TZ", "UTC", 1);
 
 	/* allocate buffer */
 	if (B_size < MINBUFSIZE)
