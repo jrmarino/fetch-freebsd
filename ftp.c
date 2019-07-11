@@ -514,8 +514,13 @@ static off_t	 ftp_seekfn(void *, off_t, int);
 #endif
 static int	 ftp_closefn(void *);
 
+#ifdef __sun__
+static ssize_t
+ftp_readfn(void *v, void *buf, size_t len)
+#else
 static int
 ftp_readfn(void *v, char *buf, int len)
+#endif
 {
 	struct ftpio *io;
 	int r;

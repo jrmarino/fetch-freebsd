@@ -51,6 +51,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <openssl/x509v3.h>
 
