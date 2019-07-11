@@ -1565,7 +1565,7 @@ http_get_proxy(struct url * url, const char *flags)
 }
 
 static void
-http_print_html(FXRETTYPE out, FXRETTYPE in)
+http_print_html(FILE *out, FXRETTYPE in)
 {
 	size_t linecap;
 	char *line, *p, *q;
@@ -1589,7 +1589,7 @@ http_print_html(FXRETTYPE out, FXRETTYPE in)
 				tag = 0;
 			} else if (!tag && *q == '<') {
 				if (q > p)
-					FXFWRITE(p, q - p, 1, out);
+					fwrite(p, q - p, 1, out);
 				tag = 1;
 				if (q + 3 < line + len &&
 				    strcmp(q, "<!--") == 0) {
@@ -1599,7 +1599,7 @@ http_print_html(FXRETTYPE out, FXRETTYPE in)
 			}
 		}
 		if (!tag && q > p)
-			FXFWRITE(p, q - p, 1, out);
+			fwrite(p, q - p, 1, out);
 		fputc('\n', out);
 	}
 	free(line);
