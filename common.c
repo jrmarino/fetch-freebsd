@@ -1578,3 +1578,91 @@ fetch_no_proxy_match(const char *host)
 
 	return (0);
 }
+
+/*
+ * The Gregorian reform modified the Julian calendar's scheme of leap years
+ * as follows:
+ *    Every year that is exactly divisible by four is a leap year, except
+ *    for years that are exactly divisible by 100, but these centurial
+ *    years are leap years if they are exactly divisible by 400. For
+ *    example, the years 1700, 1800, and 1900 were not leap years, but the
+ *    years 1600 and 2000 were.
+ * ref: http://aa.usno.navy.mil/faq/docs/calendars.php
+ *
+ * Output: 1 if year is a leapyear, 0 if year is not a leap year
+ */
+static int
+is_leapyear (int year_since_1900)
+{
+   int year = year_since_1900 + 1900;
+
+   if (year % 4 == 0) {
+      if (year % 100 == 0) {
+         return (year % 400 == 0);
+      }
+      return (1);
+   }
+   return (0);
+}
+
+static unsigned
+seconds_per_year (int year_since_1900)
+{
+   return (86400 * (is_leapyear(year_since_1900) ? 366 : 365));
+}
+
+/*
+ * This implementation is equivalent to FreeBSD's.
+ * The timegm() function interprets the input structure as representing
+ * Universal Coordinated Time (UTC).
+ *
+ * The tm component values are not restricted to their normal ranges.
+ * Unlike timegm(), the tm structure is not modified.
+ * If an error is encountered during conversion, or if a null pointer
+ * is provided as input, the current time is returned instead.
+ */
+
+time_t
+convert_2_time (struct tm *const tcomp)
+{
+	const unsigned days_past[2][12] = {
+	  { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 },
+	  { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 },
+        };
+        long long int	result = 0;
+        int 		leapyear;
+	int 		year;
+
+	if (tcomp == NULL)
+		return(time(NULL));
+
+	result += tcomp->tm_sec;
+	result += tcomp->tm_min * 60;
+	result += tcomp->tm_hour * 3600;
+
+	/* handle negative month index or greater than 12 */
+	if (tcomp->tm_mon > 11) {
+		year = tcomp->tm_mon / 12;
+		tcomp->tm_mon -= (year * 12);
+		tcomp->tm_year += year;
+	} else if (tcomp->tm_mon < 0) {
+		year = 1 + (tcomp->tm_mon / -12);
+		tcomp->tm_mon += (year * 12);
+		tcomp->tm_year -= year;
+	}
+
+	leapyear = is_leapyear(tcomp->tm_year);
+	result += days_past[leapyear][tcomp->tm_mon] * 86400;
+	result += (tcomp->tm_mday - 1) * 86400;
+	for (year = tcomp->tm_year; year < 70; year++)
+		result -= seconds_per_year(year);
+	for (year = 70; year < tcomp->tm_year; year++)
+		result += seconds_per_year(year);
+
+	if (sizeof(result) > sizeof(time_t)) {
+		if (result > INT_MAX || result < INT_MIN) {
+			return(time(NULL));
+		}
+	}
+	return ((time_t) result);
+}

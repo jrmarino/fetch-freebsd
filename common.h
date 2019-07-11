@@ -39,6 +39,7 @@
 #define FTP_DEFAULT_PROXY_PORT	21
 #define HTTP_DEFAULT_PROXY_PORT	3128
 
+#include <time.h>
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
@@ -114,6 +115,8 @@ int		 fetch_no_proxy_match(const char *);
 		/* nothing */						\
 	} while (0)
 #endif
+
+time_t		convert_2_time (struct tm *const);
 
 /*
  * I don't really like exporting http_request() and ftp_request(),
