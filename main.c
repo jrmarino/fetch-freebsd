@@ -54,6 +54,14 @@
 #define TCSASOFT	0
 #endif
 
+#ifdef __APPLE__
+#include <sys/ioctl.h>
+#endif
+
+#ifdef __linux__
+#include <sys/ioctl.h>
+#endif
+
 /* Option flags */
 static int	 A_flag;	/*    -A: do not follow 302 redirects */
 static int	 a_flag;	/*    -a: auto retry */
@@ -179,7 +187,7 @@ sig_handler(int sig)
 	case SIGALRM:
 		sigalrm = 1;
 		break;
-#if defined __linux__ || defined __sun__
+#ifdef USE_SIGPWR
 	case SIGPWR:
 #else
 	case SIGINFO:
@@ -677,7 +685,7 @@ fetch(char *URL, const char *path)
 			/* check that it didn't move under our feet */
 			if (fstat(FXFILENO(of), &nsb) == -1) {
 				/* can't happen! */
-				fprintf(stderr, "%s: fstat()\n", path,
+				fprintf(stderr, "%s: fstat(): %s\n", path,
 				  strerror(errno));
 				goto failure;
 			}
@@ -693,7 +701,7 @@ fetch(char *URL, const char *path)
 		}
 		/* seek to where we left off */
 		if (of != NULL && FXSEEKO(of, url->offset, SEEK_SET) != 0) {
-			fprintf(stderr, "%s: FXSEEKO()\n", path,
+			fprintf(stderr, "%s: FXSEEKO(): %s\n", path,
 			  strerror(errno));
 			FXCLOSE(of);
 			of = NULL;
@@ -763,7 +771,7 @@ fetch(char *URL, const char *path)
 		if (of == NULL)
 			of = FXOPEN(path, "w");
 		if (of == NULL) {
-			fprintf(stderr, "%s: FXOPEN()\n", path,
+			fprintf(stderr, "%s: FXOPEN(): %s\n", path,
 			  strerror(errno));
 			goto failure;
 		}
@@ -777,7 +785,11 @@ fetch(char *URL, const char *path)
 
 	/* suck in the data */
 	FXSETVBUF(f, NULL, _IOFBF, B_size);
+#ifdef SIGPWR
+	signal(SIGPWR, sig_handler);
+#else
 	signal(SIGINFO, sig_handler);
+#endif
 	while (!sigint) {
 		if (us.size != -1 && us.size - count < B_size &&
 		    us.size - count >= 0)

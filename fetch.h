@@ -53,6 +53,11 @@
 
 #ifdef __sun__
 #define USE_ESTREAM
+#define USE_SIGPWR
+#endif
+
+#ifdef __linux__
+#define USE_SIGPWR
 #endif
 
 #if defined(__DragonFly__) \
