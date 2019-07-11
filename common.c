@@ -1415,7 +1415,7 @@ fetch_add_entry(struct url_ent **p, int *size, int *len,
 /*** Authentication-related utility functions ********************************/
 
 static const char *
-fetch_read_word(FXRETTYPE f)
+fetch_read_word(FILE *f)
 {
 	static char word[1024];
 
@@ -1465,7 +1465,7 @@ fetch_netrc_auth(struct url *url)
 {
 	const char *word;
 	int serrno;
-	FXRETTYPE f;
+	FILE *f;
 
 	if (url->netrcfd < 0)
 		url->netrcfd = fetch_netrc_open();
