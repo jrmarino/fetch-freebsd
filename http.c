@@ -1807,7 +1807,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		} else {
 			/* default User-Agent */
 			http_cmd(conn, "User-Agent: %s " _LIBFETCH_VER,
-			    getprogname());
+			    "fetch");
 		}
 		if (url->offset > 0)
 			http_cmd(conn, "Range: bytes=%lld-", (long long)url->offset);
