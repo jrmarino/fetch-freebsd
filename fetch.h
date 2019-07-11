@@ -195,7 +195,9 @@ struct url	*fetchMakeURL(const char *, const char *, int,
 struct url	*fetchParseURL(const char *);
 void		 fetchFreeURL(struct url *);
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 /* Authentication */
 typedef int (*auth_t)(struct url *);
@@ -215,7 +217,4 @@ extern int		 fetchRestartCalls;
 /* Extra verbosity */
 extern int		 fetchDebug;
 
-#ifdef __cplusplus
-}
-#endif
 #endif /*_FETCH_H_INCLUDED*/
