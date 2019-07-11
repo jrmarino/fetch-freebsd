@@ -917,10 +917,13 @@ out:
 static int
 http_parse_mtime(const char *p, time_t *mtime)
 {
-	char locale[64], *r;
+#define LOCSIZE	64
+	char locale[LOCSIZE], *r;
 	struct tm tm;
 
-	strlcpy(locale, setlocale(LC_TIME, NULL), sizeof(locale));
+	/* can't use strlcpy, so use strncpy + terminator */
+	strncpy(locale, setlocale(LC_TIME, NULL), LOCSIZE);
+	locale[LOCSIZE - 1] = '\0';
 	setlocale(LC_TIME, "C");
 	r = strptime(p, "%a, %d %b %Y %H:%M:%S GMT", &tm);
 	/*
