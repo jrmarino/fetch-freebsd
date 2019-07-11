@@ -44,8 +44,8 @@ SRCS+=		funopen.c funopen.h
 LDFLAGS+=	-lpthread
 TSORT=		tsort 2>/dev/null
 .elif "${OPSYS}" == "SunOS"
-# LIBS+=		${PREFIX}/lib/libbsd.a
-# CFLAGS+=	-I${PREFIX}/include/bsd
+SRCS+=		estream.c estream.h
+SRCS+=		estream-printf.c estream-printf.h
 LDFLAGS+=	-lresolv -lsocket
 TSORT=		tsort 2>/dev/null
 .else
