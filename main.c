@@ -824,7 +824,11 @@ fetch(char *URL, const char *path)
 	}
 	if (!sigalrm)
 		sigalrm = FXERROR(f) && errno == ETIMEDOUT;
+#ifdef USE_SIGPWR
+	signal(SIGPWR, SIG_DFL);
+#else
 	signal(SIGINFO, SIG_DFL);
+#endif
 
 	stat_end(&xs);
 
