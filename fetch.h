@@ -51,6 +51,10 @@
 #define IPPORT_MAX	65535u
 #endif
 
+#ifndef ALLPERMS
+#define	ALLPERMS	(S_ISUID|S_ISGID|S_ISTXT|S_IRWXU|S_IRWXG|S_IRWXO)
+#endif
+
 #ifdef __sun__
 #define USE_ESTREAM
 #define USE_SIGPWR

@@ -52,7 +52,6 @@
  */
 
 
-#include <estream.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,9 +60,9 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <assert.h>
+#include "estream.h"
 #include "estream-printf.h"
 
-#ifdef __sun__
 /*
  * Reverse memchr()
  * Find the last occurrence of 'c' in the buffer 's' of size 'n'.
@@ -82,7 +81,6 @@ memrchr(const void *s, int c, size_t n)
         }
         return(NULL);
 }
-#endif
 
 
 /* Generally used types.  */

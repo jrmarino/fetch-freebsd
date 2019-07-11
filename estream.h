@@ -56,6 +56,7 @@
 
 #define off_t	off64_t
 #include <stdio.h>
+#include <stdarg.h>
 
 #define ES__RESTRICT __restrict__
 #define _ESTREAM_GCC_A_PRINTF( f, a )  __attribute__ ((format (printf,f,a)))

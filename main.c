@@ -748,7 +748,7 @@ fetch(char *URL, const char *path)
 			tmppath = (char *) malloc(len);
 			if (tmppath != NULL)
 				if (snprintf (tmppath, len,
-				   "%.*s.fetch.XXXXXX.%s",
+				   "%.*s.fetch.%s.XXXXXX",
 				   (int)(slash - path),
 				   path,
 				   slash) < 0) {
@@ -758,8 +758,8 @@ fetch(char *URL, const char *path)
 					goto failure;
 				}
 			if (tmppath != NULL) {
-				if (mkstemps(tmppath, strlen(slash) + 1) == -1) {
-					fprintf(stderr, "%s: mkstemps(): %s\n",
+				if (mkstemp(tmppath) == -1) {
+					fprintf(stderr, "%s: mkstemp(): %s\n",
 					  path, strerror(errno));
 					goto failure;
 				}
