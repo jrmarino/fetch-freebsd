@@ -81,6 +81,19 @@ jrm_reallocarray(void *optr, size_t nmemb, size_t size)
 	return realloc(optr, size * nmemb);
 }
 
+static char *
+jrm_strchrnul(const char *p, int ch)
+{
+	char c;
+
+	c = ch;
+	for (;; ++p) {
+		if (*p == c || *p == '\0')
+			return ((char *)p);
+	}
+	/* NOTREACHED */
+}
+
 #ifndef timersub
 #define timersub(a, b, result) \
     do { \
@@ -306,7 +319,7 @@ fetch_resolve(const char *addr, int port, int af)
 		he = sep++;
 	} else {
 		hb = addr;
-		sep = strchrnul(hb, ':');
+		sep = jrm_strchrnul(hb, ':');
 		he = sep;
 	}
 
