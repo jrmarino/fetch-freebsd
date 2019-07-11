@@ -149,7 +149,10 @@ struct url_ent {
 #define	FETCH_URL	18
 #define	FETCH_VERBOSE	19
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /* FILE-specific functions */
 FXRETTYPE	fetchXGetFile(struct url *, struct url_stat *, const char *);
@@ -212,4 +215,7 @@ extern int		 fetchRestartCalls;
 /* Extra verbosity */
 extern int		 fetchDebug;
 
+#ifdef __cplusplus
+}
 #endif
+#endif /*_FETCH_H_INCLUDED*/
