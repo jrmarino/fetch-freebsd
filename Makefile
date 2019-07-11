@@ -107,11 +107,11 @@ ${LIB_STATIC}: ${OBJS}
 
 install:
 	${BSD_INSTALL_PROGRAM} fetch ${DESTDIR}${PREFIX}/bin/
-	${BSD_INSTALL_MAN} fetch.1 ${DESTDIR}${MANPREFIX}/man1/
+	${BSD_INSTALL_MAN} fetch.1 ${DESTDIR}${MANPREFIX}/man/man1/
 
 install-library:
 	${BSD_INSTALL_DATA} fetch.h ${DESTDIR}${PREFIX}/include
 	${BSD_INSTALL_DATA} ${LIB_STATIC} ${DESTDIR}${PREFIX}/lib
 	${BSD_INSTALL_LIB} ${LIB_SHARED} ${DESTDIR}${PREFIX}/lib
 	ln -s ${LIB_SHARED} ${DESTDIR}${PREFIX}/lib/${LIB_LINK}
-	${BSD_INSTALL_MAN} fetch.3 ${DESTDIR}${MANPREFIX}/man3/
+	${BSD_INSTALL_MAN} fetch.3 ${DESTDIR}${MANPREFIX}/man/man3/
