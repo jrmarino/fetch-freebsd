@@ -62,10 +62,12 @@
 
 #ifdef __sun__
 #define __EXTENSIONS__
-#elif defined __linux__
-#define __USE_XOPEN
 #else
 #define _XOPEN_SOURCE
+#  if defined __linux__
+#define _XOPEN_SOURCE_EXTENDED
+#define _BSD_SOURCE
+#  endif
 #endif
 #ifdef __NetBSD__
 #define _NETBSD_SOURCE
