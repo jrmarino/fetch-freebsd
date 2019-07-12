@@ -27,6 +27,7 @@
 #ifndef FUNOPEN_H
 #define FUNOPEN_H
 
+#include <stdio.h>
 /*
  * Note: We diverge from the FreeBSD, OpenBSD and DragonFlyBSD declarations,
  * because seekfn() there wrongly uses fpos_t, assuming it's an integral

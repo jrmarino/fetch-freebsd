@@ -68,13 +68,12 @@
 #  if defined __linux__
 #define _XOPEN_SOURCE_EXTENDED
 #define _BSD_SOURCE
+#define _GNU_SOURCE
+#include "funopen.h"
 #  endif
 #endif
 #ifdef __NetBSD__
 #define _NETBSD_SOURCE
-#endif
-#ifdef __linux__
-#define __USE_XOPEN
 #endif
 #include <sys/param.h>
 #include <sys/socket.h>

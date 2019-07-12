@@ -75,6 +75,10 @@
 #include "common.h"
 #include "ftperr.h"
 
+#ifdef __linux__
+#include "funopen.h"
+#endif
+
 #ifdef __sun__
 #define u_int32_t	uint32_t
 #endif
