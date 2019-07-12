@@ -62,6 +62,7 @@
 
 #ifdef __sun__
 #define __EXTENSIONS__
+#include <libgen.h>
 #else
 #define _XOPEN_SOURCE
 #  if defined __linux__
@@ -129,6 +130,39 @@
 			    || (xyz) == HTTP_SEE_OTHER)
 
 #define HTTP_ERROR(xyz) ((xyz) >= 400 && (xyz) <= 599)
+
+/*****************************************************************************
+ * "Portable" way to get user agent name
+ */
+
+static const char*
+user_agent(void) {
+    static const char *progname;
+
+    if (progname == NULL) {
+#ifdef __sun__
+       /*  Solaris  */
+       const char *e = getexecname();
+       if (e != NULL) {
+           /* Have to make a copy since getexecname can return a readonly
+              string, but basename expects to be able to modify its arg. */
+           char *n = strdup(e);
+           if (n != NULL) {
+               progname = basename(n);
+           }
+       }
+#else
+#  ifdef __linux__
+       /*  Linux  */
+       progname = program_invocation_short_name;
+#  else
+       /*  BSD | APPLE  */
+       progname = getprogname();
+#  endif
+#endif
+    }
+    return progname;
+}
 
 
 /*****************************************************************************
@@ -1807,7 +1841,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		} else {
 			/* default User-Agent */
 			http_cmd(conn, "User-Agent: %s " _LIBFETCH_VER,
-			    "fetch");
+			    user_agent());
 		}
 		if (url->offset > 0)
 			http_cmd(conn, "Range: bytes=%lld-", (long long)url->offset);
