@@ -115,7 +115,7 @@ install:
 
 install-library:
 	${BSD_INSTALL_DATA} fetch.h ${DESTDIR}${PREFIX}/include
-	${BSD_INSTALL_DATA} ${LIB_STATIC} ${DESTDIR}${PREFIX}/lib
+	${BSD_INSTALL_DATA} ${LIB_STATIC} ${LIB_PIC} ${DESTDIR}${PREFIX}/lib
 	${BSD_INSTALL_LIB} ${LIB_SHARED} ${DESTDIR}${PREFIX}/lib
 	ln -s ${LIB_SHARED} ${DESTDIR}${PREFIX}/lib/${LIB_LINK}
 	${BSD_INSTALL_MAN} fetch.3 ${DESTDIR}${MANPREFIX}/man/man3/
