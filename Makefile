@@ -35,6 +35,7 @@ LIB_MAJOR?=	1	# currently so.4 on DF and so.6 on FreeBSD
 LIB_STATIC=	lib${LIB}.a
 LIB_SHARED=	lib${LIB}.so.${LIB_MAJOR}
 LIB_LINK=	lib${LIB}.so
+LIB_PIC=	lib${LIB}_pic.a
 
 .SUFFIXES:	.o .c
 .SUFFIXES:	.So .c
@@ -54,11 +55,11 @@ TSORT=		tsort -q
 
 all: fetch
 
-library: ${LIB_SHARED} ${LIB_STATIC}
+library: ${LIB_SHARED} ${LIB_STATIC} ${LIB_PIC}
 
 clean:
 	rm -f ${OBJS} fetch ftperr.h httperr.h
-	rm -f ${SOBJS} ${LIB_SHARED} ${LIB_STATIC}
+	rm -f ${SOBJS} ${LIB_SHARED} ${LIB_STATIC} ${LIB_PIC}
 
 .c.o:
 	${CC} -c ${.IMPSRC} ${CFLAGS} -o ${.TARGET}
@@ -103,7 +104,10 @@ ${LIB_SHARED}: ${SOBJS}
 	    `lorder ${SOBJS} | ${TSORT}` ${LDADD}
 
 ${LIB_STATIC}: ${OBJS}
-	${AR} rcs ${LIB_STATIC} ${OBJS}
+	${AR} cq ${.TARGET} ${.ALLSRC}
+
+${LIB_PIC}: ${SOBJS}
+	${AR} cq ${.TARGET} ${.ALLSRC}
 
 install:
 	${BSD_INSTALL_PROGRAM} fetch ${DESTDIR}${PREFIX}/bin/
