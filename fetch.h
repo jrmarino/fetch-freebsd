@@ -90,6 +90,7 @@
 #define	FXFWRITE	es_fwrite
 #define	FXFLUSH		es_fflush
 #define	FXCLEARERR	es_clearerr
+#define	FXFPRINTF	es_fprintf
 #else
 #define	FXRETTYPE	FILE *
 #define	FXCLOSE		fclose
@@ -104,6 +105,7 @@
 #define	FXFWRITE	fwrite
 #define	FXFLUSH		fflush
 #define	FXCLEARERR	clearerr
+#define	FXFPRINTF	fprintf
 #endif
 
 struct url {
