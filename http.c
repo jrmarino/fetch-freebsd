@@ -102,10 +102,6 @@
 #include "common.h"
 #include "httperr.h"
 
-#ifdef USE_ESTREAM
-#include "estream.h"
-#endif
-
 #ifdef __linux__
 #include "funopen.h"
 #endif

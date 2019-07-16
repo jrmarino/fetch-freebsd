@@ -76,6 +76,7 @@
 #endif
 
 #ifdef USE_ESTREAM
+#include <fetch-estream.h>
 #define	FXRETTYPE	estream_t
 #define	FXCLOSE		es_fclose
 #define	FXGETLINE	es_getline

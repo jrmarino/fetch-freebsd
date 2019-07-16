@@ -60,7 +60,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <assert.h>
-#include "estream.h"
+#include "fetch-estream.h"
 #include "estream-printf.h"
 
 /*

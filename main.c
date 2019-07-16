@@ -47,11 +47,6 @@
 
 #include "fetch.h"
 
-#ifdef USE_ESTREAM
-#include "estream.h"
-#endif
-
-
 #define MINBUFSIZE	16384
 #define TIMEOUT		120
 

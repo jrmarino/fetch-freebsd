@@ -39,10 +39,6 @@
 #include "fetch.h"
 #include "common.h"
 
-#ifdef USE_ESTREAM
-#include "estream.h"
-#endif
-
 FXRETTYPE
 fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 {
