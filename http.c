@@ -65,11 +65,10 @@
 #include <libgen.h>
 #else
 #define _XOPEN_SOURCE
-#  if defined __linux__
+#  ifdef __linux__
 #define _XOPEN_SOURCE_EXTENDED
 #define _BSD_SOURCE
 #define _GNU_SOURCE
-#include "funopen.h"
 #  endif
 #endif
 #ifdef __NetBSD__
@@ -102,6 +101,14 @@
 #include "fetch.h"
 #include "common.h"
 #include "httperr.h"
+
+#ifdef USE_ESTREAM
+#include "estream.h"
+#endif
+
+#ifdef __linux__
+#include "funopen.h"
+#endif
 
 /* Maximum number of redirects to follow */
 #define MAX_REDIRECT 20

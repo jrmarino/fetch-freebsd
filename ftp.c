@@ -75,6 +75,10 @@
 #include "common.h"
 #include "ftperr.h"
 
+#ifdef USE_ESTREAM
+#include "estream.h"
+#endif
+
 #ifdef __linux__
 #include "funopen.h"
 #endif

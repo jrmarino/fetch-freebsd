@@ -42,6 +42,10 @@
 #include "fetch.h"
 #include "common.h"
 
+#ifdef USE_ESTREAM
+#include "estream.h"
+#endif
+
 auth_t	 fetchAuthMethod;
 int	 fetchLastErrCode;
 char	 fetchLastErrString[MAXERRSTRING];
