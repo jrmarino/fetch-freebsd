@@ -68,6 +68,8 @@
 #define USE_SIGPWR
 #endif
 
+#include <time.h>  /* For time_t */
+
 #if defined(__DragonFly__) \
  || defined(__FreeBSD__) \
  || defined(__NetBSD__) \
