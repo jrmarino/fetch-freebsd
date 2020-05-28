@@ -54,7 +54,9 @@
 #ifndef ESTREAM_H
 #define ESTREAM_H
 
+#ifdef __sun__
 #define off_t	off64_t
+#endif
 #include <stdio.h>
 #include <stdarg.h>
 

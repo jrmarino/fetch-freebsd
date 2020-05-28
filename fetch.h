@@ -60,7 +60,6 @@
 #endif
 
 #ifdef __sun__
-#define USE_ESTREAM
 #define USE_SIGPWR
 #endif
 
@@ -77,7 +76,6 @@
 #define USE_SETPROCTITLE
 #endif
 
-#ifdef USE_ESTREAM
 #include <fetch-estream.h>
 #define	FXRETTYPE	estream_t
 #define	FXCLOSE		es_fclose
@@ -93,22 +91,6 @@
 #define	FXFLUSH		es_fflush
 #define	FXCLEARERR	es_clearerr
 #define	FXFPRINTF	es_fprintf
-#else
-#define	FXRETTYPE	FILE *
-#define	FXCLOSE		fclose
-#define	FXGETLINE	getline
-#define	FXSEEKO		fseeko
-#define	FXOPEN		fopen
-#define	FXFILENO	fileno
-#define	FXERROR		ferror
-#define	FXSETVBUF	setvbuf
-#define	FXSTDOUT	stdout
-#define	FXFREAD		fread
-#define	FXFWRITE	fwrite
-#define	FXFLUSH		fflush
-#define	FXCLEARERR	clearerr
-#define	FXFPRINTF	fprintf
-#endif
 
 struct url {
 	char		 scheme[URL_SCHEMELEN+1];

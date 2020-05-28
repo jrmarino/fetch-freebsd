@@ -312,13 +312,8 @@ http_fillbuf(struct httpio *io, size_t len)
 /*
  * Read function
  */
-#ifdef USE_ESTREAM
 static ssize_t
 http_readfn(void *v, void *buf, size_t len)
-#else
-static int
-http_readfn(void *v, char *buf, int len)
-#endif
 {
 	struct httpio *io = (struct httpio *)v;
 	int rlen;
@@ -350,13 +345,8 @@ http_readfn(void *v, char *buf, int len)
 /*
  * Write function
  */
-#ifdef USE_ESTREAM
 static ssize_t
 http_writefn(void *v, const void *buf, size_t len)
-#else
-static int
-http_writefn(void *v, const char *buf, int len)
-#endif
 {
 	struct httpio *io = (struct httpio *)v;
 
@@ -387,7 +377,6 @@ http_funopen(conn_t *conn, int chunked)
 {
 	struct httpio *io;
 	FXRETTYPE f;
-#ifdef USE_ESTREAM
 	es_cookie_io_functions_t http_cookie_functions =
 	{
 	  http_readfn,
@@ -395,7 +384,6 @@ http_funopen(conn_t *conn, int chunked)
 	  NULL,
 	  http_closefn
 	};
-#endif
 
 	if ((io = calloc(1, sizeof(*io))) == NULL) {
 		fetch_syserr();
@@ -403,11 +391,7 @@ http_funopen(conn_t *conn, int chunked)
 	}
 	io->conn = conn;
 	io->chunked = chunked;
-#ifdef USE_ESTREAM
 	f = es_fopencookie ((void *)io, "rb", http_cookie_functions);
-#else
-	f = funopen(io, http_readfn, http_writefn, NULL, http_closefn);
-#endif
 	if (f == NULL) {
 		fetch_syserr();
 		free(io);

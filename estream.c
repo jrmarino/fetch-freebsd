@@ -68,7 +68,7 @@
  * Find the last occurrence of 'c' in the buffer 's' of size 'n'.
  */
 static void *
-memrchr(const void *s, int c, size_t n)
+estream_memrchr(const void *s, int c, size_t n)
 {
         const unsigned char *cp;
 
@@ -1574,7 +1574,7 @@ es_write_lbf (estream_t ES__RESTRICT stream,
   unsigned char *nlp;
   int err = 0;
 
-  nlp = memrchr (buffer, '\n', bytes_to_write);
+  nlp = estream_memrchr (buffer, '\n', bytes_to_write);
   if (nlp)
     {
       /* Found a newline, directly write up to (including) this
