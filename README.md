@@ -6,10 +6,12 @@ of fetch used by [Ravenports](https://www.ravenports.com).
 
 The BSD-style makefile build and installs:
 
-  1. statically built fetch program
+  1. dynamically built fetch program (SSL library statically linked)
   1. static libfetch library
+  1. static libfetch library compiled with Position Independent Code
   1. dynamic libfetch library
-  1. a single manpage
+  1. One man page for the fetch executable
+  1. Another man page for the fetch library
     
 ## Name
 
