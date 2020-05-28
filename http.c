@@ -102,10 +102,6 @@
 #include "common.h"
 #include "httperr.h"
 
-#ifdef __linux__
-#include "funopen.h"
-#endif
-
 /* Maximum number of redirects to follow */
 #define MAX_REDIRECT 20
 

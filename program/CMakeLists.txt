@@ -14,6 +14,10 @@ if (CMAKE_SYSTEM_NAME MATCHES "(Solaris|SunOS)")
    set (libs ${libs} resolv socket)
 endif()
 
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+   set (libs ${libs} pthread)
+endif()
+
 set (srcs
 	${CMAKE_SOURCE_DIR}/main.c
 	${CMAKE_SOURCE_DIR}/fetch.c 

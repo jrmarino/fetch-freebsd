@@ -3,5 +3,13 @@ project(fetch-freebsd)
 
 SET(CMAKE_SKIP_BUILD_RPATH  TRUE)
 
-add_subdirectory(program)
-add_subdirectory(library)
+option(FETCH_PROGRAM "Build fetch program" ON)
+option(FETCH_LIBRARY "Build fetch library" OFF)
+
+if(FETCH_PROGRAM)
+	add_subdirectory(program)
+endif()
+
+if(FETCH_LIBRARY)
+	add_subdirectory(library)
+endif()
