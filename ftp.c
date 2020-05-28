@@ -75,10 +75,6 @@
 #include "common.h"
 #include "ftperr.h"
 
-#ifdef __linux__
-#include "funopen.h"
-#endif
-
 #ifdef __sun__
 #define u_int32_t	uint32_t
 #endif
@@ -505,24 +501,13 @@ struct ftpio {
 	int	 err;		/* Error code */
 };
 
-#ifdef __sun__
 static ssize_t	ftp_readfn(void *, void *, size_t);
 static ssize_t	ftp_writefn(void *, const void *, size_t);
 static int	ftp_seekfn(void *, off_t*, int);
-#else
-static int	 ftp_readfn(void *, char *, int);
-static int	 ftp_writefn(void *, const char *, int);
-static off_t	 ftp_seekfn(void *, off_t, int);
-#endif
-static int	 ftp_closefn(void *);
+static int	ftp_closefn(void *);
 
-#ifdef __sun__
 static ssize_t
 ftp_readfn(void *v, void *buf, size_t len)
-#else
-static int
-ftp_readfn(void *v, char *buf, int len)
-#endif
 {
 	struct ftpio *io;
 	int r;
@@ -554,13 +539,8 @@ ftp_readfn(void *v, char *buf, int len)
 	return (-1);
 }
 
-#ifdef __sun__
 static ssize_t
 ftp_writefn(void *v, const void *buf, size_t len)
-#else
-static int
-ftp_writefn(void *v, const char *buf, int len)
-#endif
 {
 	struct ftpio *io;
 	int w;
@@ -586,13 +566,8 @@ ftp_writefn(void *v, const char *buf, int len)
 	return (-1);
 }
 
-#ifdef __sun__
 static int
 ftp_seekfn(void *v, off_t *pos __unused, int whence __unused)
-#else
-static off_t
-ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
-#endif
 {
 	struct ftpio *io;
 
@@ -639,7 +614,6 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 {
 	struct ftpio *io;
 	FXRETTYPE f;
-#ifdef USE_ESTREAM
 	es_cookie_io_functions_t ftp_cookie_functions =
 	{
 	  ftp_readfn,
@@ -647,7 +621,6 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 	  ftp_seekfn,
 	  ftp_closefn
 	};
-#endif
 
 	if (cconn == NULL || dconn == NULL)
 		return (NULL);
@@ -657,11 +630,7 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 	io->dconn = dconn;
 	io->dir = mode;
 	io->eof = io->err = 0;
-#ifdef USE_ESTREAM
 	f = es_fopencookie ((void *)io, "rb", ftp_cookie_functions);
-#else
-	f = funopen(io, ftp_readfn, ftp_writefn, ftp_seekfn, ftp_closefn);
-#endif
 	if (f == NULL)
 		free(io);
 	return (f);
