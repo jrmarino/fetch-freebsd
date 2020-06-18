@@ -11,7 +11,7 @@ set (incssl ${CMAKE_CURRENT_SOURCE_DIR}
 set (libs ${libssl} ${libcrypto})
 
 if (CMAKE_SYSTEM_NAME MATCHES "(Solaris|SunOS)")
-   set (libs ${libs} resolv socket)
+   set (libs ${libs} resolv socket nsl)
 endif()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
