@@ -67,7 +67,7 @@
 #define _XOPEN_SOURCE
 #  ifdef __linux__
 #define _XOPEN_SOURCE_EXTENDED
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 #  endif
 #endif
