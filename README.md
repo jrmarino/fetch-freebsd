@@ -4,9 +4,9 @@ This is the code for the fetch utility from FreeBSD Release 12.0.
 It has been modified to allow building on Linux and Solaris 10u8, and is the version
 of fetch used by [Ravenports](https://www.ravenports.com).
 
-The BSD-style makefile build and installs:
+The cmake-based makefiles build and install:
 
-  1. dynamically built fetch program (SSL library statically linked)
+  1. dynamically built fetch program (SSL libraries are statically linked by default)
   1. static libfetch library
   1. static libfetch library compiled with Position Independent Code
   1. dynamic libfetch library
