@@ -32,7 +32,7 @@ gen_ftp()
 {
 	local TGT=$DEST/ftperr.h
 
-	awk -f- $THISDIR/http.errors > $TGT <<EOF
+	awk -f- $THISDIR/ftp.errors > $TGT <<EOF
 BEGIN {
   print "static struct fetcherr ftp_errlist[] = {"
 }
