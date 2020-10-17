@@ -11,10 +11,12 @@ THISDIR=$(cd ${DPATH} && pwd -P)
 
 gen_http()
 {
-	TGT=$DEST/httperr.h
+	local TGT=$DEST/httperr.h
+	local EDATA=$DEST/http.errors
 
+	cp $THISDIR/http.errors $EDATA
 	echo "static struct fetcherr http_errlist[] = {" > $TGT
-	grep -v ^\# $THISDIR/http.errors \
+	grep -v ^\# $EDATA \
 		| sort \
 		| while read -r NUM CAT STRING; do \
 			echo "    { $NUM, FETCH_$CAT, \"$STRING\" },"; \
@@ -26,10 +28,12 @@ gen_http()
 
 gen_ftp()
 {
-	TGT=$DEST/ftperr.h
+	local TGT=$DEST/ftperr.h
+	local EDATA=$DEST/ftp.errors
 
+	cp $THISDIR/ftp.errors $EDATA
 	echo "static struct fetcherr ftp_errlist[] = {" > $TGT
-	grep -v ^\# $THISDIR/ftp.errors \
+	grep -v ^\# $EDATA \
 		| sort \
 		| while read -r NUM CAT STRING; do \
 			echo "    { $NUM, FETCH_$CAT, \"$STRING\" },"; \
