@@ -22,7 +22,9 @@ END {
   print "};"
 }
 /^[1-9]/ {
-  print "    { " \$1 ", FETCH_" \$2 ", \"" \$3 "\" },"
+  msg=\$3
+  for(x = 4; x <= NF; x++) {msg = msg " " \$x}
+  print "    { " \$1 ", FETCH_" \$2 ", \"" msg "\" },"
 }
 EOF
 	echo "Created $TGT"
@@ -41,7 +43,9 @@ END {
   print "};"
 }
 /^[1-9]/ {
-  print "    { " \$1 ", FETCH_" \$2 ", \"" \$3 "\" },"
+  msg=\$3
+  for(x = 4; x <= NF; x++) {msg = msg " " \$x}
+  print "    { " \$1 ", FETCH_" \$2 ", \"" msg "\" },"
 }
 EOF
 	echo "Created $TGT"
