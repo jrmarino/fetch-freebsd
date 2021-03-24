@@ -400,7 +400,7 @@ fetchParseURL(const char *URL)
 		    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "_"
 		    "abcdefghijklmnopqrstuvwxyz");
 	}
-	if ((*q != '\0' && *q != '/' && *q != ':') || q - p > MAXHOSTNAMELEN)
+	if ((*q != '\0' && *q != '/' && *q != ':') || q - p > URL_HOSTNAME)
 		goto ouch;
 	for (i = 0; p + i < q; i++)
 		u->host[i] = tolower((unsigned char)p[i]);

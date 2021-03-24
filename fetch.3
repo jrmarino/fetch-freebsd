@@ -161,7 +161,7 @@ struct url {
     char	 scheme[URL_SCHEMELEN+1];
     char	 user[URL_USERLEN+1];
     char	 pwd[URL_PWDLEN+1];
-    char	 host[MAXHOSTNAMELEN+1];
+    char	 host[URL_HOSTNAME+1];
     int		 port;
     char	*doc;
     off_t	 offset;
@@ -244,7 +244,7 @@ structure is defined as follows in
 .In fetch.h :
 .Bd -literal
 struct url_ent {
-    char         name[PATH_MAX];
+    char         name[MAX_PATH_LEN];
     struct url_stat stat;
 };
 .Ed

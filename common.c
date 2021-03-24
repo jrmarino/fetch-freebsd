@@ -1404,7 +1404,7 @@ fetch_add_entry(struct url_ent **p, int *size, int *len,
 	}
 
 	tmp = *p + *len;
-	snprintf(tmp->name, PATH_MAX, "%s", name);
+	snprintf(tmp->name, MAX_PATH_LEN, "%s", name);
 	memcpy(&tmp->stat, us, sizeof(*us));
 
 	(*len)++;
@@ -1430,7 +1430,7 @@ static int
 fetch_netrc_open(void)
 {
 	struct passwd *pwd;
-	char fn[PATH_MAX];
+	char fn[MAX_PATH_LEN];
 	const char *p;
 	int fd, serrno;
 
@@ -1438,7 +1438,7 @@ fetch_netrc_open(void)
 		DEBUGF("NETRC=%s\n", p);
 		if (snprintf(fn, sizeof(fn), "%s", p) >= (int)sizeof(fn)) {
 			fetch_info("$NETRC specifies a file name "
-			    "longer than PATH_MAX");
+			    "longer than 4096");
 			return (-1);
 		}
 	} else {

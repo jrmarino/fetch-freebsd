@@ -289,7 +289,7 @@ static int
 ftp_cwd(conn_t *conn, const char *file)
 {
 	const char *beg, *end;
-	char pwd[PATH_MAX];
+	char pwd[MAX_PATH_LEN];
 	int e, i, len;
 
 	/* If no slashes in name, no need to change dirs. */
@@ -944,7 +944,7 @@ static int
 ftp_authenticate(conn_t *conn, struct url *url, struct url *purl)
 {
 	const char *user, *pwd, *logname;
-	char pbuf[MAXHOSTNAMELEN + MAXLOGNAME + 1];
+	char pbuf[URL_HOSTNAME + MAXLOGNAME + 1];
 	int e, len;
 
 	/* XXX FTP_AUTH, and maybe .netrc */

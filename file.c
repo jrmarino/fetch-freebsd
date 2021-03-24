@@ -123,7 +123,7 @@ fetchListFile(struct url *u, const char *flags __unused)
 	struct url_stat us;
 	struct url_ent *ue;
 	int size, len;
-	char fn[PATH_MAX], *p;
+	char fn[MAX_PATH_LEN], *p;
 	DIR *dir;
 	int l;
 

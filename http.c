@@ -1646,7 +1646,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	const char *body)
 {
 	char timebuf[80];
-	char hbuf[MAXHOSTNAMELEN + 7], *host;
+	char hbuf[URL_HOSTNAME + 7], *host;
 	conn_t *conn;
 	struct url *url, *new;
 	int chunked, direct, ims, noredirect, verbose;

@@ -38,14 +38,8 @@
 #define URL_SCHEMELEN	16
 #define URL_USERLEN	256
 #define URL_PWDLEN	256
-
-#ifndef	MAXHOSTNAMELEN
-#define	MAXHOSTNAMELEN	256
-#endif
-
-#ifndef	PATH_MAX
-#define	PATH_MAX	1024
-#endif
+#define URL_HOSTNAME	256
+#define MAX_PATH_LEN	4096
 
 #ifndef IPPORT_MAX
 #define IPPORT_MAX	65535u
@@ -96,7 +90,7 @@ struct url {
 	char		 scheme[URL_SCHEMELEN+1];
 	char		 user[URL_USERLEN+1];
 	char		 pwd[URL_PWDLEN+1];
-	char		 host[MAXHOSTNAMELEN+1];
+	char		 host[URL_HOSTNAME+1];
 	int		 port;
 	char		*doc;
 	off_t		 offset;
@@ -112,7 +106,7 @@ struct url_stat {
 };
 
 struct url_ent {
-	char		 name[PATH_MAX];
+	char		 name[MAX_PATH_LEN];
 	struct url_stat	 stat;
 };
 
