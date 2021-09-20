@@ -62,6 +62,10 @@
 #include <sys/ioctl.h>
 #endif
 
+#ifdef __NetBSD__
+#include <sys/ioctl.h>
+#endif
+
 /* Option flags */
 static int	 A_flag;	/*    -A: do not follow 302 redirects */
 static int	 a_flag;	/*    -a: auto retry */
