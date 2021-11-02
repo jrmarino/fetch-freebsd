@@ -2,7 +2,7 @@
 
 This is the code for the fetch utility from FreeBSD Release 12.0.
 It has been modified to allow building on Linux and Solaris 10u8, and is the version
-of fetch used by [Ravenports](https://www.ravenports.com).
+of fetch used by [Ravenports](http://www.ravenports.com).
 
 The cmake-based makefiles build and install:
 
