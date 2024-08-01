@@ -62,11 +62,11 @@ install(TARGETS fetch_pic
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libfetch_static.a
 	RENAME libfetch.a
-	DESTINATION lib
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
 install(FILES ${CMAKE_SOURCE_DIR}/fetch-estream.h
 	${CMAKE_SOURCE_DIR}/fetch.h
-	DESTINATION include
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(FILES ${CMAKE_SOURCE_DIR}/fetch.3 DESTINATION share/man/man3)
+install(FILES ${CMAKE_SOURCE_DIR}/fetch.3 DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)

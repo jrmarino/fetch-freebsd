@@ -7,6 +7,8 @@ option(FETCH_PROGRAM "Build fetch program" ON)
 option(FETCH_LIBRARY "Build fetch library" OFF)
 option(USE_SYSTEM_SSL "Don't statically link the Ravenport-compatible SSL" OFF)
 
+include(GNUInstallDirs)
+
 if(FETCH_PROGRAM)
 	add_subdirectory(program)
 endif()

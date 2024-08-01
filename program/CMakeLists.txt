@@ -57,6 +57,6 @@ target_include_directories(${prog} PUBLIC
 )
 target_compile_options(${prog} PUBLIC -Wno-psabi)
 
-# install(TARGETS ${prog} DESTINATION bin)
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${prog} DESTINATION bin RENAME fetch)
-install(FILES ${CMAKE_SOURCE_DIR}/fetch.1 DESTINATION share/man/man1)
+# install(TARGETS ${prog} DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${prog} DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME fetch)
+install(FILES ${CMAKE_SOURCE_DIR}/fetch.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
