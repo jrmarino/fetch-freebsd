@@ -1524,7 +1524,7 @@ retry:
 				 * No auth information found in system - exiting
 				 * with warning.
 				 */
-				warnx("Missing username and/or password set");
+				fprintf(stderr, "Missing username and/or password set\n");
 				fetch_syserr();
 				goto ouch;
 			}
