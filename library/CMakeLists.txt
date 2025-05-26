@@ -52,6 +52,9 @@ set_target_properties(fetch PROPERTIES SOVERSION 1)
 target_compile_options(fetchobj PUBLIC -Wno-psabi)
 target_compile_options(fetch_static PUBLIC -Wno-psabi)
 
+target_compile_definitions(fetchobj PUBLIC OPENSSL_API_COMPAT=0x10100000L)
+target_compile_definitions(fetch_static PUBLIC OPENSSL_API_COMPAT=0x10100000L)
+
 install(TARGETS fetch
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
