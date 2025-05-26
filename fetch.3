@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: head/lib/libfetch/fetch.3 297355 2016-03-28 16:48:28Z trasz $
 .\"
-.Dd July 10, 2019
+.Dd November 24, 2020
 .Dt FETCH 3
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@
 .Nm fetchPutFile ,
 .Nm fetchStatFile ,
 .Nm fetchListFile ,
+.Nm fetchReqHTTP ,
 .Nm fetchXGetHTTP ,
 .Nm fetchGetHTTP ,
 .Nm fetchPutHTTP ,
@@ -111,6 +112,8 @@
 .Fn fetchStatHTTP "struct url *u" "struct url_stat *us" "const char *flags"
 .Ft struct url_ent *
 .Fn fetchListHTTP "struct url *u" "const char *flags"
+.Ft FXRETTYPE
+.Fn fetchReqHTTP "struct url *u" "const char *method" "const char *flags" "const char *content_type" "const char *body"
 .Ft FXRETTYPE
 .Fn fetchXGetFTP "struct url *u" "struct url_stat *us" "const char *flags"
 .Ft FXRETTYPE
@@ -361,9 +364,10 @@ and password "anonymous@<hostname>".
 .Sh HTTP SCHEME
 The
 .Fn fetchXGetHTTP ,
-.Fn fetchGetHTTP
+.Fn fetchGetHTTP ,
+.Fn fetchPutHTTP ,
 and
-.Fn fetchPutHTTP
+.Fn fetchReqHTTP
 functions implement the HTTP/1.1 protocol.
 With a little luck, there is
 even a chance that they comply with RFC2616 and RFC2617.
@@ -392,6 +396,18 @@ will send a conditional
 .Li If-Modified-Since
 HTTP header to only fetch the content if it is newer than
 .Va ims_time .
+.Pp
+The function
+.Fn fetchReqHTTP
+can be used to make requests with an arbitrary HTTP verb,
+including POST, DELETE, CONNECT, OPTIONS, TRACE or PATCH.
+This can be done by setting the argument
+.Fa method
+to the intended verb, such as
+.Ql POST ,
+and
+.Fa body
+to the content.
 .Pp
 Since there seems to be no good way of implementing the HTTP PUT
 method in a manner consistent with the rest of the
@@ -447,20 +463,17 @@ the environment variable
 .Ev SSL_CLIENT_KEY_FILE
 can be set to point to the key file.
 In case the key uses a password, the user will be prompted on standard
-input (see
-.Xr PEM 3 ) .
+input.
 .Pp
 By default
 .Nm libfetch
 allows TLSv1 and newer when negotiating the connecting with the remote
 peer.
 You can change this behavior by setting the
-.Ev SSL_ALLOW_SSL3
-environment variable to allow SSLv3 and
 .Ev SSL_NO_TLS1 ,
 .Ev SSL_NO_TLS1_1 and
 .Ev SSL_NO_TLS1_2
-to disable TLS 1.0, 1.1 and 1.2 respectively.
+environment variables to disable TLS 1.0, 1.1 and 1.2 respectively.
 .Sh AUTHENTICATION
 Apart from setting the appropriate environment variables and
 specifying the user name and password in the URL or the
@@ -658,8 +671,6 @@ which proxies should not be used.
 Same as
 .Ev NO_PROXY ,
 for compatibility.
-.It Ev SSL_ALLOW_SSL3
-Allow SSL version 3 when negotiating the connection (not recommended).
 .It Ev SSL_CA_CERT_FILE
 CA certificate bundle containing trusted CA certificates.
 Default value: See HTTPS SCHEME above.

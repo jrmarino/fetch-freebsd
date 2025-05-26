@@ -83,6 +83,7 @@
 #include <locale.h>
 #include <netdb.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1036,13 +1037,12 @@ http_base64(const char *src)
 	    "0123456789+/";
 	char *str, *dst;
 	size_t l;
-	int t, r;
+	int t;
 
 	l = strlen(src);
 	if ((str = malloc(((l + 2) / 3) * 4 + 1)) == NULL)
 		return (NULL);
 	dst = str;
-	r = 0;
 
 	while (l >= 3) {
 		t = (src[0] << 16) | (src[1] << 8) | src[2];
@@ -1051,7 +1051,7 @@ http_base64(const char *src)
 		dst[2] = base64[(t >> 6) & 0x3f];
 		dst[3] = base64[(t >> 0) & 0x3f];
 		src += 3; l -= 3;
-		dst += 4; r += 4;
+		dst += 4;
 	}
 
 	switch (l) {
@@ -1062,7 +1062,6 @@ http_base64(const char *src)
 		dst[2] = base64[(t >> 6) & 0x3f];
 		dst[3] = '=';
 		dst += 4;
-		r += 4;
 		break;
 	case 1:
 		t = src[0] << 16;
@@ -1070,7 +1069,6 @@ http_base64(const char *src)
 		dst[1] = base64[(t >> 12) & 0x3f];
 		dst[2] = dst[3] = '=';
 		dst += 4;
-		r += 4;
 		break;
 	case 0:
 		break;
@@ -1477,6 +1475,8 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 	int val;
 #endif
 	int serrno;
+	bool isproxyauth = false;
+	http_auth_challenges_t proxy_challenges;
 
 #ifdef INET6
 	af = AF_UNSPEC;
@@ -1494,18 +1494,58 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 
 	curl = (purl != NULL) ? purl : URL;
 
+retry:
 	if ((conn = fetch_connect(curl->host, curl->port, af, verbose)) == NULL)
 		/* fetch_connect() has already set an error code */
 		return (NULL);
 	init_http_headerbuf(&headerbuf);
 	if (strcmp(URL->scheme, SCHEME_HTTPS) == 0 && purl) {
-		http_cmd(conn, "CONNECT %s:%d HTTP/1.1",
-		    URL->host, URL->port);
-		http_cmd(conn, "Host: %s:%d",
-		    URL->host, URL->port);
+		init_http_auth_challenges(&proxy_challenges);
+		http_cmd(conn, "CONNECT %s:%d HTTP/1.1", URL->host, URL->port);
+		http_cmd(conn, "Host: %s:%d", URL->host, URL->port);
+		if (isproxyauth) {
+			http_auth_params_t aparams;
+			init_http_auth_params(&aparams);
+			if (*purl->user || *purl->pwd) {
+				aparams.user = strdup(purl->user);
+				aparams.password = strdup(purl->pwd);
+			} else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL &&
+				    *p != '\0') {
+				if (http_authfromenv(p, &aparams) < 0) {
+					http_seterr(HTTP_NEED_PROXY_AUTH);
+					fetch_syserr();
+					goto ouch;
+				}
+			} else if (fetch_netrc_auth(purl) == 0) {
+				aparams.user = strdup(purl->user);
+				aparams.password = strdup(purl->pwd);
+			} else {
+				/*
+				 * No auth information found in system - exiting
+				 * with warning.
+				 */
+				fprintf(stderr, "Missing username and/or password set\n");
+				fetch_syserr();
+				goto ouch;
+			}
+			http_authorize(conn, "Proxy-Authorization",
+			    &proxy_challenges, &aparams, purl);
+			clean_http_auth_params(&aparams);
+		}
 		http_cmd(conn, "");
-		if (http_get_reply(conn) != HTTP_OK) {
-			http_seterr(conn->err);
+		/* Get reply from CONNECT Tunnel attempt */
+		int httpreply = http_get_reply(conn);
+		if (httpreply != HTTP_OK) {
+			http_seterr(httpreply);
+			/* If the error is a 407/HTTP_NEED_PROXY_AUTH */
+			if (httpreply == HTTP_NEED_PROXY_AUTH &&
+			    ! isproxyauth) {
+				/* Try again with authentication. */
+				clean_http_headerbuf(&headerbuf);
+				fetch_close(conn);
+				isproxyauth = true;
+				goto retry;
+			}
 			goto ouch;
 		}
 		/* Read and discard the rest of the proxy response */
@@ -2205,6 +2245,9 @@ fetchListHTTP(struct url *url __unused, const char *flags __unused)
 	return (NULL);
 }
 
+/*
+ * Arbitrary HTTP verb and content requests
+ */
 FXRETTYPE
 fetchReqHTTP(struct url *URL, const char *method, const char *flags,
 	const char *content_type, const char *body)

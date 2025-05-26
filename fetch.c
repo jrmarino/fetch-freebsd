@@ -325,6 +325,9 @@ fetch_pctdecode(char *dst, const char *src, size_t dlen)
 		    (d2 = fetch_hexval(s[2])) >= 0 && (d1 > 0 || d2 > 0)) {
 			c = d1 << 4 | d2;
 			s += 2;
+		} else if (s[0] == '%') {
+			/* Invalid escape sequence. */
+			return (NULL);
 		} else {
 			c = *s;
 		}
@@ -397,7 +400,7 @@ fetchParseURL(const char *URL)
 
 	/* hostname */
 	if (*p == '[') {
-		q = p + 1 + strspn(p + 1, ":0123456789ABCDEFabcdef");
+		q = p + 1 + strspn(p + 1, ":0123456789ABCDEFabcdef.");
 		if (*q++ != ']')
 			goto ouch;
 	} else {
@@ -424,7 +427,7 @@ fetchParseURL(const char *URL)
 				goto ouch;
 			}
 		}
-		if (n < 1 || n > IPPORT_MAX)
+		if (p != q && (n < 1 || n > IPPORT_MAX))
 			goto ouch;
 		u->port = n;
 		p = q;
@@ -445,7 +448,10 @@ nohost:
 			goto ouch;
 		}
 		u->doc = doc;
-		while (*p != '\0') {
+		/* fragments are reserved for client-side processing, see
+		 * https://www.rfc-editor.org/rfc/rfc9110.html#section-7.1
+		 */
+		while (*p != '\0' && *p != '#') {
 			if (!isspace((unsigned char)*p)) {
 				*doc++ = *p++;
 			} else {

@@ -112,12 +112,15 @@ jrm_strchrnul(const char *p, int ch)
  * Error messages for resolver errors
  */
 static struct fetcherr netdb_errlist[] = {
+#ifdef EAI_ADDRFAMILY
+	{ EAI_ADDRFAMILY, FETCH_RESOLV, "Address family for host not supported" },
+#endif
 #ifdef EAI_NODATA
-	{ EAI_NODATA,	FETCH_RESOLV,	"Host not found" },
+	{ EAI_NODATA,	FETCH_RESOLV,	"No address for host" },
 #endif
 	{ EAI_AGAIN,	FETCH_TEMP,	"Transient resolver failure" },
 	{ EAI_FAIL,	FETCH_RESOLV,	"Non-recoverable resolver failure" },
-	{ EAI_NONAME,	FETCH_RESOLV,	"No address record" },
+	{ EAI_NONAME,	FETCH_RESOLV,	"Host does not resolve" },
 	{ -1,		FETCH_UNKNOWN,	"Unknown resolver error" }
 };
 
@@ -742,24 +745,8 @@ fetch_ssl_verify_altname(STACK_OF(GENERAL_NAME) *altnames,
 	const char *ns;
 
 	for (i = 0; i < sk_GENERAL_NAME_num(altnames); ++i) {
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-		/*
-		 * This is a workaround, since the following line causes
-		 * alignment issues in clang:
-		 * name = sk_GENERAL_NAME_value(altnames, i);
-		 * OpenSSL explicitly warns not to use those macros
-		 * directly, but there isn't much choice (and there
-		 * shouldn't be any ill side effects)
-		 */
-		name = (GENERAL_NAME *)SKM_sk_value(void, altnames, i);
-#else
 		name = sk_GENERAL_NAME_value(altnames, i);
-#endif
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-		ns = (const char *)ASN1_STRING_data(name->d.ia5);
-#else
 		ns = (const char *)ASN1_STRING_get0_data(name->d.ia5);
-#endif
 		nslen = (size_t)ASN1_STRING_length(name->d.ia5);
 
 		if (name->type == GEN_DNS && ip == NULL &&
@@ -849,9 +836,7 @@ fetch_ssl_setup_transport_layer(SSL_CTX *ctx, int verbose)
 {
 	long ssl_ctx_options;
 
-	ssl_ctx_options = SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_TICKET;
-	if (getenv("SSL_ALLOW_SSL3") == NULL)
-		ssl_ctx_options |= SSL_OP_NO_SSLv3;
+	ssl_ctx_options = SSL_OP_ALL | SSL_OP_NO_SSLv3 | SSL_OP_NO_TICKET;
 	if (getenv("SSL_NO_TLS1") != NULL)
 		ssl_ctx_options |= SSL_OP_NO_TLSv1;
 	if (getenv("SSL_NO_TLS1_1") != NULL)
@@ -996,14 +981,6 @@ fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 	X509_NAME *name;
 	char *str;
 
-	/* Init the SSL library and context */
-	if (!SSL_library_init()){
-		fprintf(stderr, "SSL library init failed\n");
-		return (-1);
-	}
-
-	SSL_load_error_strings();
-
 	conn->ssl_meth = SSLv23_client_method();
 	conn->ssl_ctx = SSL_CTX_new(conn->ssl_meth);
 	SSL_CTX_set_mode(conn->ssl_ctx, SSL_MODE_AUTO_RETRY);
@@ -1021,7 +998,7 @@ fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 	}
 	SSL_set_fd(conn->ssl, conn->sd);
 
-#if OPENSSL_VERSION_NUMBER >= 0x0090806fL && !defined(OPENSSL_NO_TLSEXT)
+#if !defined(OPENSSL_NO_TLSEXT)
 	if (!SSL_set_tlsext_host_name(conn->ssl,
 	    __DECONST(struct url *, URL)->host)) {
 		fprintf(stderr,
@@ -1172,7 +1149,7 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 			}
 			timersub(&timeout, &now, &delta);
 			deltams = delta.tv_sec * 1000 +
-			    delta.tv_usec / 1000;;
+			    delta.tv_usec / 1000;
 		}
 		errno = 0;
 		pfd.revents = 0;
